@@ -1,0 +1,322 @@
+---
+title: "R Learner's Permit Exam"
+author: "Will Finkelstein, MUP 1."
+date: "2/19/2021"
+output:
+  html_notebook:
+    toc: yes
+---
+
+# Introduction
+Over the course of the first few weeks of our class, you have learned some basic elements of the R programming language and RStudio IDE. As we move forward with our class, we will continue to add knowledge of new packages, tools, and data within R.
+
+This R Learner's Permit is designed to assess your knowledge of the core elements of the R language and software that we have focused on so far in class.
+
+## Instructions
+
+Please follow the instructions contained in this R Notebook, which involve filling in code and generating output. Most instructions ask you to add or fill in code chunks. Others ask you to provide a written interpretation in the notebook portion of the document.
+
+Complete as many items as you can. If you run into trouble completing an item, add comments to your code or in the notebook describing where you are running into problems, and what you think the next step might be to solving the problem you're having.
+
+Complete as many items as you can and then upload your R Notebook to the "R Learners Permit" folder in your assignment repository on GitHub.
+
+## The Data
+
+In the "data" subfolder of this project, you will find one .rds file called NYC_Violations.rds. This is the data you will use to earn your learner's permit. These are "real world" data derived from two sources:
+
+1. New York City [housing maintainance code violation](https://data.cityofnewyork.us/Housing-Development/Housing-Maintenance-Code-Violations/wvxf-dwi5) data for the years 2009 to 2019
+2. Data on property characteristics from the [Primary Land Use Tax Lot Output (PLUTO)](https://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page) database
+
+I have merged selected columns from these datasets for you (you will find data documentation and metadata for both datasets in the documentation subfolder), and after taking a close look at the dataset and the documentation, you should be able to identify which portions of the data you will work with come from each dataset.
+
+The PLUTO data contains information on each [tax lot](http://gis.nyc.gov/taxmap/map.htm) within the city of New York. By merging these data which contain characteristics of buildings and land with the building code violation data, the data you have to work with describes the characteristics of the building and property where the violation occurred as well as the nature of the violation. It is essential for you to spend the time to think carefully about what each row in the building code violation data represents.
+
+# Earn Your Learner's Permit
+
+With that background in mind, its time to earn your learner's permit.
+
+## Task 1: Load and Describe the Data
+
+At the beginning of the script, we will create a holding area within which you can load any packages you may need to work with as you year your R Learner's Permit (if you are not using any packages, please leave this area blank):
+```{r, echo=FALSE}
+install.packages()
+library(readr)
+library(readxl)
+library(tidyverse)
+# Your Code Here
+```
+
+Use the `readRDS()` command to load the data into an object with the name of your choice.
+```{r}
+nyccodevio <- readRDS("C:/Users/willf/OneDrive/Desktop/UIUC/UP 494_Neighborhood Analysis/R Learner's Permit WS/R Learner's Permit WS/data/NYC_Violations_WB.rds")
+# Your Code Here
+```
+
+Describe the structure of the data, including the number of rows and columns in the data. Create a table outside of the code chunk below in your notebook that describes each variable name and what each row in the data represents (a [Markdown table generator](https://www.tablesgenerator.com/markdown_tables) may be useful):
+```{r}
+# Your Code Here
+nrow(nyccodevio) #4473752
+ncol(nyccodevio) #12
+str(nyccodevio) #Out of the 12 variables present in the code violation table, six have character data and the other six are numeric. The character variables are 'BBL', 'Borough', 'NTA', 'ViolationStatus', 'ownername', and 'histdist'. The numeric variables include 'InspectionYear', 'unitstotal', 'assessland', 'assesstot', 'yearbuilt', and 'OrderNumber'. 
+```
+| Variable Name   | Data Type | Description                                                                                                                     |
+|-----------------|-----------|---------------------------------------------------------------------------------------------------------------------------------|
+| BBL             | CHR       | "Borough-Block-Lot", the parcel number for each code violation                                                                  |
+| Borough         | CHR       | the borough where each violation took place                                                                                     |
+| NTA             | CHR       | "Neighborhood Tabulation Area", essentially the neighborhood where each violation took place                                    |
+| ViolationStatus | CHR       | the status of each code violation- resolved('Close') or unresolved('Open')                                                      |
+| InspectionYear  | NUM       | the year that the violation was reported, between 2009 and 2019                                                                 |
+| unitstotal      | NUM       | the total number of units (residential and nonresidential) on the parcel for each violation                                     |
+| ownername       | CHR       | the owner of each parcel receiving a code violation                                                                             |
+| assessland      | NUM       | the assessed land value of each parcel receiving a violation                                                                    |
+| assesstot       | NUM       | the assessed total value (land + property) for each parcel receiving a violation                                                |
+| yearbuilt       | NUM       | the year each property receiving a violation was built.                                                                         |
+| histdist        | CHR       | the historic district where each parcel receiving a violation is located. Parcels not in a historic district are listed as "NA" |
+| OrderNumber     | NUM       | the section of the housing maintenance code pertaining to the violation's legal rationale.
+
+***Table made with online markdown generatior
+
+**Your Narrative Description of the Data Structure:**
+
+***
+## Task 2: Summarize Violations
+
+Describe the number of unique violations for each year (information on the year the unit was inspected for violations is contained in the InspectionYear variable):
+```{r}
+# Your Code Here
+nrow(nyccodevio[nyccodevio$InspectionYear == 2009, ]) #129821 violations in 2009
+nrow(nyccodevio[nyccodevio$InspectionYear == 2010, ]) #153951 violations in 2010
+nrow(nyccodevio[nyccodevio$InspectionYear == 2011, ]) #196874 violations in 2011
+nrow(nyccodevio[nyccodevio$InspectionYear == 2012, ]) #290909 violations in 2012
+nrow(nyccodevio[nyccodevio$InspectionYear == 2013, ]) #378807 violations in 2013
+nrow(nyccodevio[nyccodevio$InspectionYear == 2014, ]) #396618 violations in 2014
+nrow(nyccodevio[nyccodevio$InspectionYear == 2015, ]) #549297 violations in 2015
+nrow(nyccodevio[nyccodevio$InspectionYear == 2016, ]) #512530 violations in 2016
+nrow(nyccodevio[nyccodevio$InspectionYear == 2017, ]) #555997 violations in 2017
+nrow(nyccodevio[nyccodevio$InspectionYear == 2018, ]) #641750 violations in 2018
+nrow(nyccodevio[nyccodevio$InspectionYear == 2019, ]) #667128 violations in 2019
+
+```
+
+Now, build upon your summary code to make a plot (geometry of your choice) of inspections by year:
+```{r}
+#Building the Table
+yrs <- c("2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019")
+viobyyr <- c(nrow(nyccodevio[nyccodevio$InspectionYear == 2009,]), nrow(nyccodevio[nyccodevio$InspectionYear == 2010, ]),  
+nrow(nyccodevio[nyccodevio$InspectionYear == 2011, ]),
+nrow(nyccodevio[nyccodevio$InspectionYear == 2012, ]),
+nrow(nyccodevio[nyccodevio$InspectionYear == 2013, ]),
+nrow(nyccodevio[nyccodevio$InspectionYear == 2014, ]), 
+nrow(nyccodevio[nyccodevio$InspectionYear == 2015, ]), 
+nrow(nyccodevio[nyccodevio$InspectionYear == 2016, ]), 
+nrow(nyccodevio[nyccodevio$InspectionYear == 2017, ]),
+nrow(nyccodevio[nyccodevio$InspectionYear == 2018, ]), 
+nrow(nyccodevio[nyccodevio$InspectionYear == 2019, ]))
+YearlyChange <-data.frame(yrs, viobyyr,stringsAsFactors = FALSE)
+ggplot(data = YearlyChange, aes(x=yrs, y = viobyyr, group=1)) +
+geom_line(linetype="solid", color="blue", alpha =.8) +
+geom_point(color="black")+
+labs(title = "Code Violations in New York per Year", x = "Year", y = "Number of Violations")
+
+#I had the hardest time figuring out how to call a numeric and character and definitely over thought this a ton. I didn't know how to reverse log the Number of violations either.
+```
+
+In your own words, what is the overall trend with regards to the number of violations issued between 2009 and 2019?:
+
+
+
+**Your Narrative Description:**
+```{r}
+# Between 2009 and 2019, the only year with fewer code violations than previously was 2016. Between 2009 and 2011, code violations increased steadily, increasing sharply between 2011 and 2013. Between 2013 and 2014, there was a small jump, followed by the steepest jump in 2015. After declining slightly in 2016, they have increased each year- steadily between 2016-2017 and 2018-2019, but sharply from 2017-18.#
+```
+
+
+Next, describe the number of unique violations for each New York City borough. Do this using both *base* r code and using `dplyr` code that utilizes the `summarise()` function:
+```{r}
+# Your Code Here
+BKN <- c(nrow(nyccodevio[nyccodevio$Borough== "BROOKLYN", ])) #1651373 VIOLATIONS
+MAN <- c(nrow(nyccodevio[nyccodevio$Borough== "MANHATTAN", ])) #902948 VIOLATIONS
+QUE <- c(nrow(nyccodevio[nyccodevio$Borough== "QUEENS", ])) #464672 VIOLATIONS
+BRX <- c(nrow(nyccodevio[nyccodevio$Borough== "BRONX", ])) #1377887 VIOLATIONS
+STI <- c(nrow(nyccodevio[nyccodevio$Borough== "STATEN ISLAND", ])) #76872 VIOLATIONS
+bobase <- data.frame(BKN, MAN, QUE, BRX, STI, stringsAsFactors = FALSE)
+bobase
+
+byborough <- nyccodevio %>% group_by(Borough) %>%
+summarise(Violations = n()) 
+
+#I'm seriously overthinkining so much of this.
+
+ 
+
+```
+***
+## Task 3: More Detail on Violations
+
+Let's create some more detailed summaries of violations. 
+
+Create a table that enumerates by borough the number of violations that are currently closed or open (ViolationStatus). Remove the `NA` values so that you are just reporting open and closed cases:
+```{r}
+boroughvio <-  
+nyccodevio %>% group_by(Borough, ViolationStatus) %>% filter(ViolationStatus != "NA") %>% summarise(Total = n())  
+# Your Code Here
+
+```
+See if you can refine the formatting of this table. Although we haven't formally introduced `pivot_wider()` yet, try using it so that you produce a summary in which there are three columns - the borough, the number of closed cases, and the number of open cases (remember you can search for documentation, e.g. `?pivot_wider()`). You will need to supply pivot_wider with an argument for `names_from` and an argument for `values_from`. Names should come from the Violation Status column, and values should come from the column in which the count of violations is contained.
+```{r}
+boroughs2 <- pivot_wider(boroughvio, names_from = ViolationStatus, values_from= Total) %>% mutate()
+# Your Code Here
+
+```
+Now create a chart (geom of your choice) that represents the number of *open cases* by borough by the year in which the violation occurred:
+```{r}
+
+opencase <- nyccodevio %>% group_by(Borough, ViolationStatus, InspectionYear) %>% filter(ViolationStatus == "Open") %>% summarise(Total = n()) %>% mutate(InspectionYear = as.character(InspectionYear))
+
+ggplot(data = opencase, aes(x= InspectionYear, y=Total, color = Borough, fill = Borough)) + geom_line(linetype = "solid", alpha = 1) +geom_point() + theme_minimal() + scale_y_continuous(breaks = c(0, 10000, 20000, 30000, 40000, 50000,60000, 70000, 80000, 90000, 100000) )+ 
+labs(title = "Open Violations by Year in Each New York City Borough", x = "Year", y = "Number of Open Violations")
+#I'm really struggling to see how to get these lines to connect the right way. Any time I try is a strange diagonal mess.
+```
+
+Now, create a table with the total number of *buildings* with violations (remember, there may be multiple violations per building in the data). Remember that the BBL column contains a unique identification number for each building (technically it's each tax lot, but we'll use that as a proxy for building). You can use the `distinct()` command to create a subset of the distinct buildings with violations. You could also use the `summarise()` command to accomplish something similar...
+
+```{r}
+uniquebuildings <- nyccodevio %>%
+select(BBL) %>%
+distinct(BBL) %>% 
+summarise(Unique = n())
+
+
+#I think I did this correctly?
+# Your Code Here
+
+```
+
+Let's create a final summary table of buildings with violations and total violations by borough. Use `dplyr` [join syntax](https://dplyr.tidyverse.org/reference/join.html) to accomplish this. Your table should have a column containing the borough name, a column containing the total number of buildings with violations, and a column containing the total number of violations.
+```{r}
+buildingbyborough <- nyccodevio %>%
+group_by(Borough) %>% 
+select(BBL) %>%
+distinct(BBL) %>% 
+summarise(Buildings = n())
+# Your Work Here
+ViolationsByBoroughAndBuilding <- full_join(byborough, buildingbyborough)
+#I'm kind of ashamed to admit how long this took but I guess it worked out in the end and I can move on
+```
+
+Finally, add to this table, the average violations per building by borough. You can use the `mutate()` command to add this column to your existing table.
+
+```{r}
+# Your Work Here
+ViolationsByBoroughAndBuilding %>% group_by(Borough)%>% mutate(AveragePerBuilding =mean(Violations/Buildings, na.rm = TRUE))
+#I wanted to round these but am not entirely sure how
+```
+
+Which boroughs contain higher rates of violations per building?
+```{r}
+#The Bronx has the highest rate per violation by a landslide, followed by Manhattan. Shockingly, Brooklyn's rate is the median, despite having the most violations.
+```
+
+
+**Your Narrative Description on Violations by Borough:**
+
+***
+
+## Task 4: Building Ages
+
+Create a table that displays the mean and median ages (yearbuilt) of buildings with violations by borough. Remember that individual buildings may have multiple observations - you will need to figure out how to create a summary of the dataset that includes one record per building to generate an unbiased summary.
+```{r}
+ViolationsbyYearBuilt <- nyccodevio %>%
+group_by(Borough, yearbuilt) %>%
+select(BBL) %>%
+distinct(BBL) %>%
+summarise(Totalperyear = n())
+
+
+#nyccodevio %>% group_by(Borough) %>% summarise ()
+# Your Code Here
+
+```
+
+Add to the table that you just made two columns that include the ages of the oldest and youngest buildings for each borough (since the years are numeric, the functions `min()` and `max()` may be useful here):
+```{r}
+# Your Code Here
+
+```
+
+What do you discover when trying to do this, and how might you modify your code to rectify it?
+
+**Your Narrative Description of this Table and code to address your discovery:**
+
+```{r}
+# Your Code here
+
+```
+
+**Your Narrative Description of the implications of any modifications you made between the last two code chunks:**
+
+***
+## Task 5: Decade Comparison
+Thinking about each borough, create a table that would allow us to compare the frequency of violations in 2009 with the frequency of violations in 2019. 
+
+```{r}
+# Your Code Here
+
+```
+
+How has the frequency of violations changed over the decade?
+**Your Narrative Description:**
+
+***
+
+## Task 6: Frequency of Violations by Violation Type
+
+The OrderNumber column contains information on the actual violation recorded (the housing maintenance code violation user guide contains a narrative description of each order number).
+
+What is the most frequent code violation recorded in each borough?
+```{r}
+# Your Code Here
+
+```
+
+**Your Narrative Description:**
+
+***
+## Task 7: Building Owners with the Most Violations
+
+Which identifiable owner (ownername) has the highest rate of violations per unit?
+```{r}
+# Your Code Here
+
+```
+
+**Your Narrative Description:**
+
+***
+## Task 8: Buildings in Historic Districts
+
+For each Borough, how many violations occur in *buildings* built after 1957 which are located in historic districts (histdist)?
+
+```{r}
+# Your Code Here
+
+```
+
+Add to this table the average assessed value of the land (assessland), the average assessed value of the buildings, and the average total assessed value.
+
+```{r}
+# Your Code Here
+
+```
+
+For those buildings in historic districts, how different are the ratios of the assessed values for land and buildings in each borough? What is your interpretation of these differences?
+
+```{r}
+# Your Code Here
+
+```
+**Your Narrative Description:**
+
+***
+# The End
+That's it - you're done! Your permit will be assessed and returned shortly. Please submit your R notebook to the appropriate GitHub folder. Rename the notebook so that the name is lastname_firstname_Permit.Rmd (e.g. Greenlee_Andrew_Permit.Rmd). You just need to upload the .Rmd file - no need to include the whole file structure.
