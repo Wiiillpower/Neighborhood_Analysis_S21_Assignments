@@ -1,0 +1,421 @@
+---
+title: "Lab Notebook #1- Welcome to Unionville"
+author: "Will Finkelstein, MUP."
+date: "2/23/2021"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  pdf_document:
+    toc: yes
+  html_notebook:
+    toc: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The following notebook is my local adaptation of “Welcome to Champaign”, the lab covered in  course session 9. Using basic techniques to call and download data from the U.S. Census Bureau, the notebook gives a brief overview of the demographic and socioeconomic characteristics present in a place, county, and region. The geographic areas accompanying each geographic scale are as follows:
+*Place - Macon’s Unionville Neighborhood, or “Census Tract 104, Bibb County, Georgia”
+*County-  Macon-Bibb County, Georgia
+*Region - the Macon MSA
+ As Macon, Georgia has been consolidated with Bibb County, Georgia since 2014, the place and county describing this area have the same accompanying data. As these are identical and more appropriately described at the county level due to the types of services provided, I decided to incorporate the neighborhood connected to my final project, Unionville, as the place. Census Tract 104 includes all of Unionville and a small part of neighboring Napier Heights. While an imperfect translation, this tract is the most similar geographic type that the Census provides. This part of Napier Heights has a similar profile to Unionville as well. The Macon, Georgia MSA consists of five total counties, which are Macon-Bibb and four of the counties bordering it. These are Crawford County (southwest), Monroe County (northwest), Jones County (northeast), and Twiggs County (southeast). 
+The notebook includes a brief overview of how to get the interface ready. This is followed by sections for “Race & Ethnicity”, “Age”, and “Median Household Income & Poverty Rate” for the geographic areas. Each includes a table created in R, using dplyr, with data imported from the US Census Bureau online and a written, comparative analysis of the three areas. Tying these together will be a conclusion synthesizing the bigger picture. 
+
+# Getting Set Up
+
+Doing this type of analysis with Census data requires enabling the previously installed tidyverse and tidycensus packages, which is done below.
+```{r}
+ 
+library(tidyverse)
+library(tidycensus)
+
+```
+
+Data can be imported from the online Census through a unique API key and the function below. The install and overwrite commands keep it loaded in.
+```{r}
+ 
+census_api_key("f6d3f308f00a0ffda3aa19e86807e0ea5960d86e", install = TRUE, overwrite=TRUE)
+```
+
+# Race and Ethnicity by Place
+
+The code below imports data from Census table “B02001” (race) to tabulate racial demographics for the place, county, and region separately. Following the import, each table has code to include specific columns, rename the columns descriptively, and calculate the percentages for each racial group in decimal form. These tables have columns for name, total population, white population, black population, Asian population, population of other races, and percentages of total for the four racial categories. Each table is combined into one large table with the “bind_rows()” function.
+
+  “Latino” is considered an ethnicity rather than a race. This requires using data from Census Table “B03002”, or “Hispanic or Latino Origin by Race”. As this table has many variables applying to different nationalities and races, two variables are imported instead of the entire table. These are “B03002_001” for Total Population and “B03002_012” for Total Latino Population.  Adding the Latino and percentage Latino in each area to the existing race table requires making separate tables for each area, combining these three with the “bind_rows()” function, and finally combining this table with the race table through “bind_columns().” After combining the ethnicity and race tables, the whole number values are formatted to include commas with “scales::number(),” and the decimal percentages are formatted to a general percentage with a symbol using “scales::percent()”. As the only whole number that really helps is the total population, only NAME, Total Population, and the five population percentages are chosen.  Finally, the inputs in the NAME category are renamed to the descriptive names used for this analysis- “Unionville Neighborhood”, “Macon-Bibb”, and “Macon, Georgia Metropolitan Area.” The following code returns the table below it:
+
+
+```{r}
+gaplace_race_2017<-get_acs(geography = "tract", state = "GA",county = "Bibb", table = "B02001", year=2017, survey="acs5", output="wide")%>% 
+  filter(NAME ==  "Census Tract 104, Bibb County, Georgia") %>%
+  mutate(NAME = "Unionville Neighborhood") %>%
+  mutate(pop_other = B02001_001E-(B02001_002E + B02001_003E+ B02001_005E)) %>% 
+  rename(pop_tot = B02001_001E, pop_white = B02001_002E, pop_black = B02001_003E, pop_asian = B02001_005E) %>% 
+  select(NAME, pop_tot, pop_white, pop_black, pop_asian, pop_other)%>% 
+  mutate(
+    p_white = (pop_white/pop_tot),
+    p_black = (pop_black/pop_tot),
+    p_asian = (pop_asian/pop_tot),
+    p_other = (pop_other/pop_tot))
+
+gacounty_race_2017<-get_acs(geography = "county", state = "GA", table = "B02001", year=2017, survey="acs5", output="wide")%>%
+  filter(NAME == "Bibb County, Georgia") %>%
+  mutate(NAME = "Macon-Bibb") %>%
+  mutate(pop_other = B02001_001E-(B02001_002E + B02001_003E + B02001_005E)) %>%
+  rename(pop_tot = B02001_001E, 
+         pop_white = B02001_002E, 
+         pop_black = B02001_003E, 
+         pop_asian = B02001_005E) %>%
+  select(NAME, pop_tot, pop_white, pop_black, pop_asian, pop_other) %>%
+  mutate (
+  p_white = (pop_white/pop_tot),
+  p_black = (pop_black/pop_tot),
+  p_asian = (pop_asian/pop_tot),
+  p_other = (pop_other/pop_tot)
+  )
+garegion_race_2017<- get_acs(geography = "county", state = "GA", table = "B02001", year=2017, survey="acs5", output="wide") %>% 
+  filter(NAME %in% c("Bibb County, Georgia", "Crawford County, Georgia", "Monroe County, Georgia", "Jones County, Georgia", "Twiggs County, Georgia")) %>% 
+  summarise(
+            B02001_001E = sum(B02001_001E),
+            B02001_002E = sum(B02001_002E),
+            B02001_003E = sum(B02001_003E),
+            B02001_005E = sum(B02001_005E)) %>% 
+  mutate(NAME = "Macon, Georgia Metropolitan Area")%>% 
+  mutate(pop_other = B02001_001E-(B02001_002E + B02001_003E+ B02001_005E)) %>% 
+  rename(pop_tot = B02001_001E, 
+         pop_white = B02001_002E, 
+         pop_black = B02001_003E, 
+         pop_asian = B02001_005E) %>% 
+  select(NAME, pop_tot, pop_white, pop_black, pop_asian, pop_other) %>% 
+  mutate(
+  p_white = (pop_white / pop_tot),
+  p_black = (pop_black / pop_tot),
+  p_asian = (pop_asian / pop_tot),
+  p_other = (pop_other / pop_tot))
+
+garace_2017<-bind_rows(gaplace_race_2017, gacounty_race_2017, garegion_race_2017)
+
+gaplace_latino_2017<-get_acs(geography = "tract", state = "GA", county = "Bibb", variables = c("B03002_001", "B03002_012"), year=2017, survey="acs5", output="wide") %>% 
+filter(NAME == "Census Tract 104, Bibb County, Georgia") %>%
+mutate(NAME = "Unionville Neighborhood") %>%
+rename(poptot = B03002_001E, poplatino = B03002_012E) %>%
+select(NAME, poptot, poplatino)%>%
+mutate(p_latino = (poplatino/poptot))
+
+gacounty_latino_2017<-get_acs(geography = "county", state = "GA", variables =   c("B03002_001", "B03002_012"), year=2017, survey="acs5", output="wide") %>%
+filter(NAME == "Bibb County, Georgia") %>%
+mutate(NAME = "Macon-Bibb") %>%
+rename(poptot = B03002_001E, poplatino = B03002_012E) %>%
+select(NAME, poptot, poplatino)%>%
+mutate(p_latino = (poplatino/poptot))
+
+garegion_latino_2017<- get_acs(geography = "county", state = "GA", variables =   c("B03002_001", "B03002_012"), year=2017, survey="acs5", output="wide") %>% 
+  filter(NAME %in% c("Bibb County, Georgia", "Crawford County, Georgia", "Monroe County, Georgia", "Jones County, Georgia", "Twiggs County, Georgia")) %>% 
+  summarise(
+            B03002_001E = sum(B03002_001E),
+            B03002_012E = sum(B03002_012E)) %>% 
+  mutate(NAME = "Macon, Georgia Metropolitan Area")%>% 
+  rename(poptot = B03002_001E, poplatino = B03002_012E) %>% 
+  select(NAME, poptot, poplatino) %>% 
+  mutate(p_latino = (poplatino / poptot))
+
+galatino_2017<-bind_rows(gaplace_latino_2017, gacounty_latino_2017, garegion_latino_2017) %>% select(poplatino, p_latino) 
+
+
+garaceandethnicity_2017<- bind_cols(garace_2017, galatino_2017) %>%
+  mutate(pop_tot = scales::number(pop_tot, big.mark = ","),
+        pop_white = scales::number(pop_white, big.mark = ","),
+        pop_black = scales::number(pop_black, big.mark = ","),
+        pop_asian = scales::number(pop_asian, big.mark = ","),
+        pop_other = scales::number(pop_other, big.mark = ","),
+        poplatino = scales::number(poplatino, big.mark = ","),
+        p_white = scales::percent(p_white),
+        p_black = scales::percent(p_black),
+        p_asian = scales::percent(p_asian),
+        p_other = scales::percent(p_other),
+        p_latino = scales::percent(p_latino) ) %>%
+  rename("Area" = NAME,
+         "Total Population" = pop_tot,  
+         "Population-White" =pop_white,
+         "Population-Black" = pop_black,
+         "Population-Asian" = pop_asian,
+         "Population-Other Races" = pop_other,
+         "Population- Latino" = poplatino,
+         "% White"= p_white,
+         "% Black" = p_black,
+         "% Asian" = p_asian,
+         "% Other Races" = p_other,
+         "% Latino" = p_latino) %>%
+  select("Area", "Total Population", "% White", "% Black", "% Asian", "% Other Races", "% Latino")  
+garaceandethnicity_2017
+  
+
+```
+In the total metropolitan region, around 67% of the population lives in Macon-Bibb County. Macon-Bibb is predominantly black but also has a sizeable white population. Meanwhile, the Macon Metro is majority white but with an even closer spread of white to black residents. It will be crucial to point out that this is not a sign of seamless community integration. Residents who are Asian, Latino, or of another race make up less than 8% of the population in each area.
+The Unionville Neighborhood, only making up 1.2% of the Macon-Bibb population, is almost homogenously black. There are no Asian or Latino residents and less than 100 residents in both the white and other races category. These demographic contrasts between Macon-Bibb and Unionville will be an important theme in understanding the spatial characteristics that Macon’s majority-black neighborhoods face.
+
+# Age by Place
+
+Tabulating the age by place for each area requires importing  the “Sex by Age” Census table, or “B01001”. The data are uploaded in “tidy” form, due to the large number of age subgroups for male and female. After taking out the values for total population, total male and total female, the code groups variables into fewer, larger inclusive age ranges using the “case_when()” function. After grouping these and adding up a second category that shows the total number in each group, a smaller, neater table is returned. After combining the three tables into one by binding the columns, percentages in each category are calculated as decimals, formatted like a percentage using “scales::percent(),” and given descriptive variable names. The aggregate table, returned by  the following code, returns the age groups and percentage of population by geographic area in each category:
+
+```{r}
+# Your Work Here
+gaplace_age_2017<-get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B01001", year=2017, survey="acs5", output="tidy") %>%
+filter(NAME == "Census Tract 104, Bibb County, Georgia") %>% 
+mutate(variable = str_replace(variable, "B01001_0", "")) %>%
+filter(!variable %in% c("01", "02", "26")) %>%
+mutate(agegroups = case_when(
+    variable == "03" ~ "19 and Below", 
+    variable == "04" ~ "19 and Below", 
+    variable == "05" ~ "19 and Below",
+    variable == "06" ~ "19 and Below",
+    variable == "07" ~ "19 and Below",
+    variable == "08" ~ "20 to 44",
+    variable == "09" ~ "20 to 44",
+    variable == "10" ~ "20 to 44",
+    variable == "11" ~ "20 to 44",
+    variable == "12" ~ "20 to 44",
+    variable == "13" ~ "20 to 44",
+    variable == "14" ~ "20 to 44",
+    variable == "15" ~ "45 to 64",
+    variable == "16" ~ "45 to 64",
+    variable == "17" ~ "45 to 64",
+    variable == "18" ~ "45 to 64",
+    variable == "19" ~ "65 and Above",
+    variable == "20" ~ "65 and Above",
+    variable == "21" ~ "65 and Above",
+    variable == "22" ~ "65 and Above",
+    variable == "23" ~ "65 and Above",
+    variable == "24" ~ "65 and Above",
+    variable == "25" ~ "65 and Above",
+    variable == "27" ~ "19 and Below",
+    variable == "28" ~ "19 and Below",
+    variable == "29" ~ "19 and Below",
+    variable == "30" ~ "19 and Below",
+    variable == "31" ~ "19 and Below",
+    variable == "32" ~ "20 to 44",
+    variable == "33" ~ "20 to 44",
+    variable == "34" ~ "20 to 44",
+    variable == "35" ~ "20 to 44",
+    variable == "36" ~ "20 to 44",
+    variable == "37" ~ "20 to 44",
+    variable == "38" ~ "20 to 44",
+    variable == "39" ~ "45 to 64",
+    variable == "40" ~ "45 to 64",
+    variable == "41" ~ "45 to 64",
+    variable == "42" ~ "45 to 64",
+    variable == "43" ~ "45 to 64",
+    variable == "44" ~ "65 and Above", 
+    variable == "45" ~ "65 and Above",
+    variable == "46" ~ "65 and Above",
+    variable == "47" ~ "65 and Above",
+    variable == "48" ~ "65 and Above",
+    variable == "49" ~ "65 and Above"
+    )) %>%
+group_by(agegroups) %>% 
+  summarise(people=sum(estimate))
+ 
+gacounty_age_2017 <- get_acs(geography = "county", state = "GA",  table = "B01001", year=2017, survey = "acs5", output = "tidy")%>% 
+filter( NAME == "Bibb County, Georgia") %>% 
+mutate(variable = str_replace(variable, "B01001_0", "")) %>% 
+filter(!variable %in% c("01", "02", "26")) %>% 
+mutate(agegroups = case_when(
+    variable == "03" ~ "19 and Below", 
+    variable == "04" ~ "19 and Below", 
+    variable == "05" ~ "19 and Below",
+    variable == "06" ~ "19 and Below",
+    variable == "07" ~ "19 and Below",
+    variable == "08" ~ "20 to 44",
+    variable == "09" ~ "20 to 44",
+    variable == "10" ~ "20 to 44",
+    variable == "11" ~ "20 to 44",
+    variable == "12" ~ "20 to 44",
+    variable == "13" ~ "20 to 44",
+    variable == "14" ~ "20 to 44",
+    variable == "15" ~ "45 to 64",
+    variable == "16" ~ "45 to 64",
+    variable == "17" ~ "45 to 64",
+    variable == "18" ~ "45 to 64",
+    variable == "19" ~ "65 and Above",
+    variable == "20" ~ "65 and Above",
+    variable == "21" ~ "65 and Above",
+    variable == "22" ~ "65 and Above",
+    variable == "23" ~ "65 and Above",
+    variable == "24" ~ "65 and Above",
+    variable == "25" ~ "65 and Above",
+    variable == "27" ~ "19 and Below",
+    variable == "28" ~ "19 and Below",
+    variable == "29" ~ "19 and Below",
+    variable == "30" ~ "19 and Below",
+    variable == "31" ~ "19 and Below",
+    variable == "32" ~ "20 to 44",
+    variable == "33" ~ "20 to 44",
+    variable == "34" ~ "20 to 44",
+    variable == "35" ~ "20 to 44",
+    variable == "36" ~ "20 to 44",
+    variable == "37" ~ "20 to 44",
+    variable == "38" ~ "20 to 44",
+    variable == "39" ~ "45 to 64",
+    variable == "40" ~ "45 to 64",
+    variable == "41" ~ "45 to 64",
+    variable == "42" ~ "45 to 64",
+    variable == "43" ~ "45 to 64",
+    variable == "44" ~ "65 and Above", 
+    variable == "45" ~ "65 and Above",
+    variable == "46" ~ "65 and Above",
+    variable == "47" ~ "65 and Above",
+    variable == "48" ~ "65 and Above",
+    variable == "49" ~ "65 and Above"
+    )
+  ) %>% 
+  group_by(agegroups) %>% 
+  summarise(people=sum(estimate))
+garegion_age_2017<- get_acs(geography = "county", state = "GA", table = "B01001", year=2017, survey="acs5", output="tidy") %>% 
+filter(NAME %in% c("Bibb County, Georgia", "Crawford County, Georgia", "Monroe County, Georgia", "Jones County, Georgia", "Twiggs County, Georgia"))  %>% mutate(variable = str_replace(variable, "B01001_0", ""))%>% 
+filter(!variable %in% c("01", "02", "26")) %>% 
+mutate(agegroups = case_when(
+    variable == "03" ~ "19 and Below", 
+    variable == "04" ~ "19 and Below", 
+    variable == "05" ~ "19 and Below",
+    variable == "06" ~ "19 and Below",
+    variable == "07" ~ "19 and Below",
+    variable == "08" ~ "20 to 44",
+    variable == "09" ~ "20 to 44",
+    variable == "10" ~ "20 to 44",
+    variable == "11" ~ "20 to 44",
+    variable == "12" ~ "20 to 44",
+    variable == "13" ~ "20 to 44",
+    variable == "14" ~ "20 to 44",
+    variable == "15" ~ "45 to 64",
+    variable == "16" ~ "45 to 64",
+    variable == "17" ~ "45 to 64",
+    variable == "18" ~ "45 to 64",
+    variable == "19" ~ "65 and Above",
+    variable == "20" ~ "65 and Above",
+    variable == "21" ~ "65 and Above",
+    variable == "22" ~ "65 and Above",
+    variable == "23" ~ "65 and Above",
+    variable == "24" ~ "65 and Above",
+    variable == "25" ~ "65 and Above",
+    variable == "27" ~ "19 and Below",
+    variable == "28" ~ "19 and Below",
+    variable == "29" ~ "19 and Below",
+    variable == "30" ~ "19 and Below",
+    variable == "31" ~ "19 and Below",
+    variable == "32" ~ "20 to 44",
+    variable == "33" ~ "20 to 44",
+    variable == "34" ~ "20 to 44",
+    variable == "35" ~ "20 to 44",
+    variable == "36" ~ "20 to 44",
+    variable == "37" ~ "20 to 44",
+    variable == "38" ~ "20 to 44",
+    variable == "39" ~ "45 to 64",
+    variable == "40" ~ "45 to 64",
+    variable == "41" ~ "45 to 64",
+    variable == "42" ~ "45 to 64",
+    variable == "43" ~ "45 to 64",
+    variable == "44" ~ "65 and Above", 
+    variable == "45" ~ "65 and Above",
+    variable == "46" ~ "65 and Above",
+    variable == "47" ~ "65 and Above",
+    variable == "48" ~ "65 and Above",
+    variable == "49" ~ "65 and Above"
+    )) %>% 
+  group_by(agegroups) %>%
+  summarise(people=sum(estimate))
+
+gaage_2017<-bind_cols(gaplace_age_2017, gacounty_age_2017, garegion_age_2017) %>% 
+rename(agegroups = agegroups...1, place = people...2, county = people...4, region = people...6) %>%
+  mutate(p_Place = (place / sum(place)),
+         p_County = (county / sum(county)),
+         p_Region = (region / sum(region))) %>% 
+  mutate(p_Place = scales::percent(p_Place),
+         p_County = scales::percent(p_County),
+         p_Region = scales::percent(p_Region)) %>%
+  select(agegroups, p_Place, p_County, p_Region) %>%
+  rename("Age Groups" = agegroups, "% of Population in Unionville"= p_Place, "% of Population in Macon-Bibb" = p_County, "% of Population in the Macon, GA Metro" = p_Region)
+
+gaage_2017  
+
+```
+The population in Unionville is clearly older than in Macon-Bibb and the Macon, Georgia Metropolitan, Area, having 49.9% of the population over the age of 45. In both under 45 categories, Unionville has a smaller population. Macon-Bibb has a larger youth and young adult population percentage than the Metro, but the Metro has a slightly higher proportion, of residents over the age of 45. As Unionville’s residents are mostly aging homeowners and renters with regular turnover, this breakdown makes sense. It is unsurprising that younger populations are estimated to make up a smaller part of the population, due to the challenge of counting transient renters. 
+
+
+
+# Median Household Income and Poverty Rate by Place
+
+This final table requires importing only three total variables for each geography, but from two tables. “Median Household Income” is obtained from table “B19013” and is completed after importing the two column table, renaming the names to each geographic area, renaming the column containing quantities to “MedHouseIncome,” and using “bindrows().”  After creating the aggregate Median Household Income table, the incomes are formatted as currency using “scales::dollar().” Meanwhile, the table to obtain poverty rates, “B17001”, splits the total number into sex by age categories. As only the total population and total population in poverty are needed, the import function includes a two variable vector. After adding the same descriptive place names, the code calculates the decimal percentage poverty rate and combines the tables into one with “bindrows().” Finally, the populations are formatted, the poverty rate is formatted as a percentage, and this gets combined to the Median Household Income Table with “bindcolumns().” The table returns area name, median household income, and poverty rate variables, which are then renamed to more descriptive tags. The code below returns the following table:
+
+
+```{r}
+# Your Work Here
+gaplace_mhi_2017<-get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2017, survey="acs5", output="tidy") %>%
+  filter(NAME == "Census Tract 104, Bibb County, Georgia") %>% 
+  mutate(NAME = "Unionville Neighborhood") %>%
+  rename(MedHouseIncome = estimate) %>%
+  select(NAME, MedHouseIncome)
+
+gacounty_mhi_2017<-get_acs(geography = "county", state = "GA", table = "B19013", year=2017, survey="acs5", output="wide") %>% 
+filter(NAME == "Bibb County, Georgia") %>% 
+mutate(NAME = "Macon-Bibb")%>% 
+rename(MedHouseIncome = B19013_001E) %>%
+select(NAME, MedHouseIncome)   
+
+
+garegion_mhi_2017<- get_acs(geography = "county", state = "GA", table = "B19013", year=2017, survey="acs5", output="wide") %>% 
+  filter(NAME %in% c("Bibb County, Georgia", "Crawford County, Georgia", "Monroe County, Georgia", "Jones County, Georgia", "Twiggs County, Georgia")) %>%  summarise(B19013_001E = sum(B19013_001E)/5) %>% 
+mutate(NAME = "Macon, Georgia Metropolitan Area") %>% 
+rename(MedHouseIncome = B19013_001E) %>% 
+select(NAME, MedHouseIncome)
+
+gaplace_povertyrate_2017<-get_acs(geography = "tract", state = "GA", county = "Bibb", variables = c("B17001_001E", "B17001_002E"), year=2017, survey="acs5", output="wide")%>%
+filter(NAME == "Census Tract 104, Bibb County, Georgia") %>%
+mutate(NAME = "Unionville Neighborhood") %>%
+rename(pop_total =B17001_001E,  pop_pov = B17001_002E) %>% 
+select(NAME, pop_total, pop_pov) %>%
+mutate(p_pov = (pop_pov/pop_total)) 
+ 
+gacounty_povertyrate_2017<-get_acs(geography = "county", state = "GA", variables = c("B17001_001E", "B17001_002E"), year=2017, survey="acs5", output="wide")%>%
+filter(NAME == "Bibb County, Georgia") %>%
+mutate(NAME= "Macon-Bibb") %>%
+rename(pop_total =B17001_001E,  pop_pov = B17001_002E) %>%
+select(NAME, pop_total, pop_pov) %>%
+mutate(p_pov = (pop_pov/pop_total)) 
+ 
+garegion_povertyrate_2017<- get_acs(geography = "county", state = "GA", variables = c("B17001_001E", "B17001_002E"), year=2017, survey="acs5", output="wide") %>% 
+  filter(NAME %in% c("Bibb County, Georgia", "Crawford County, Georgia", "Monroe County, Georgia", "Jones County, Georgia", "Twiggs County, Georgia")) %>%  summarise(B17001_001E = sum(B17001_001E), B17001_002E = sum(B17001_002E)) %>% mutate(NAME = "Macon, Georgia Metropolitan Area") %>% 
+rename(pop_total =B17001_001E,  pop_pov = B17001_002E) %>% 
+select(NAME, pop_total, pop_pov) %>%
+mutate(p_pov = (pop_pov/pop_total))  
+ 
+
+ gamhi_2017 <- bind_rows(gaplace_mhi_2017, gacounty_mhi_2017, garegion_mhi_2017)%>% mutate(MedHouseIncome = scales::dollar(MedHouseIncome)) 
+ 
+gapovertyrate_2017 <- bind_rows(gaplace_povertyrate_2017, gacounty_povertyrate_2017, garegion_povertyrate_2017) %>% 
+mutate(p_pov = scales::percent(p_pov),
+pop_total = scales::number(pop_total, big.mark = ","),
+pop_pov = scales::number (pop_pov, big.mark = ","))
+
+gapovertyandmhi_2017 <- bind_cols(gamhi_2017, gapovertyrate_2017) %>%
+ select(NAME...1, MedHouseIncome, p_pov) %>%
+rename("Area" = NAME...1, "Median Household Income" = MedHouseIncome, "% of Population in Poverty" = p_pov)  
+gapovertyandmhi_2017   
+
+```
+The Macon metro has a slightly lower poverty rate and higher median household income than Macon-Bibb. This likely has something to do with the number of Macon business and nonprofit executives that live in Jones and Monroe counties, due to less development, lower housing costs, and tax rates. However, the region has few major employers outside of Macon and still faces a sizeable poverty rate. Unionville has almost 60% of its population living in poverty. Its median household income is half of the Macon-Bibb’s and under the poverty line for a family of three (Assistant Secretary for Planning and Evaluation, US Department of Health & Human Services, 2021).
+
+# Conclusion and Further Questions
+These three tables back a common and consistent narrative that predominantly black communities are older, yet considerably less wealthy than geographies with larger proportions of white residents. While the sample for Unionville is much smaller than Macon-Bibb and the Macon, Georgia Metropolitan Region, other Macon neighborhoods with similar demographics consistently have similar indicators. The present data show more correlative relationships than causative, so reasons cannot automatically be assumed. But the following questions are just a few of the many that can be considered for placing reason behind these inequities:
+1.	How have the presented variables changed over the last two or three decades?
+2.	Do vacancy and housing tenure accompany changes in median household income and poverty by similar multipliers? 
+3.	How do increasing commute times to work and school align with employment and commute type data?
+4.	How have affordable housing opt-ins, and property values, shifted as well.
+5.	Where does Unionville stand in comparison to close by neighborhoods, where do the regional counties overlap, and how does Macon-Bibb’s inequality rate compare to other close by counties?
+
+
