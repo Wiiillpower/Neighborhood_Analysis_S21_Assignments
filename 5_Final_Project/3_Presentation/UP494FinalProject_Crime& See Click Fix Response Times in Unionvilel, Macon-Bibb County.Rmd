@@ -1,0 +1,768 @@
+---
+title: "Final Project- Background: Unionville Assets & Challenges "
+author: "Will Finkelstein, MUP1."
+date: "4/02/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    toc: yes
+editor_options: 
+  chunk_output_type: inline
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This RMD will provide an update of the more focused topic that will be explored, along with some preliminary context that ties or compares challenges in Unionville to those in other parts of Macon-Bibb County.
+
+#Context and Background
+
+Unionville is a historically black, traditionally working class neighborhood in the “near west side” of Macon. It is located just across I-75 from Mercer University. Mercer has funded a lot of real estate and foundational grant programs that spill into a few “higher-need” neighborhoods proximate to downtown, partially to permit its continued development agenda. As Unionville is just outside of that extended “downtown” area, the neighborhood is unable to access these.
+
+Unionville has continued to transition from being a majority-homeowner community to having a declining older homeowner, mostly renter population. Children, having left long ago and having little interest in holding onto their aging parents’ homes, would sell these to any interested buyer. This trend throughout the community has enabled slumlords. Blight, illegal dumping, and high renter turnover have been constant norms. Additionally, Unionville has had a reputation for gang activity and violent crime since my early childhood. Without going too deep into specific incidents, a significant number of last year’s shootings occurred close to hear. A number of neighborhood commercial buildings have murals paying homage to community pillars who were victims of gun violence. And the Bentley & Sons Funeral Home, easily its most renowned neighborhood institution, provides free services for the families of victims as a social impact program. Yet, there are stories of unity outside of struggle also. Former Mayor C. Jack Ellis, Macon’s first and only black mayor, began his civic career as a community organizer in Unionville. The Frank Johnson Community Center, operated by Parks & Recreation, recently received around $1 million worth of renovations from SPLOST (Special Purpose Local Option Sales Tax) revenues (Dunlap, 2017). The Macon-Bibb County Government’s new Public Works and Neighborhood Cleanup Collaborations consider Unionville a major priority (Macon-Bibb County, 2021). And the neighborhood’s small, but strong business community takes a serious interest in seeing the change happen.
+
+The remainder of this background will  discuss the spatial areas of analysis (tracts and streets), the data sources in use, the analyses that have already been and will be conducted, and the next steps for a final product. While the initial plan was to conduct further analysis on qualitative perspectives from long-term residents and neighborhood leaders, some communication challenges with organizers and other time constraints make that unfeasible at present. The expectations for how to better engage the community will be in the form of an extension, briefly described at the end.
+ 
+
+
+
+```{r}
+ library(tidyverse)
+library(tidycensus)
+library(tidyr)
+library(qdapRegex)
+census_api_key("f6d3f308f00a0ffda3aa19e86807e0ea5960d86e", install = TRUE, overwrite=TRUE) 
+ 
+```
+#Revise
+# Methods and Approach
+
+For this ongoing project, I am conducting analyses that occur at three spatial scales. One analysis occurs countywide, which evaluates the relationship between "Median Household Income" and "Proportion of Population that is Black/African American" in every census tract in Bibb County, Georgia. This is at a single point in time, but draws the picture of whether current sociodemographic data reflect trends consistent with other places.A table and dot map will be included, with each entry corresponding to a Census Tract. This is Macon-Bibb County's location compared to the rest of Georgia, with interstates and larger cities also highlighted:
+ 
+There is some confusion about the light intensity, but Macon-Bibb has been considered the fourth largest community in Georgia since its 2014 consolidation. Compared to other notable major cities, Macon-Bibb is located about 80 miles southeast of Atlanta, 100 miles east of Columbus, 120 miles southwest of Augusta, 170 miles northwest of Savannah, and 90 miles southwest of Athens. 
+
+
+Next, Census Tract 104, which contains almost all of Unionville and a couple of blocks of  Napier Heights neighborhood, will be compared to two other Census Tracts in the same county commission district. These are Census Tract 101, which contains all of Macon's  Pleasant Hill neighborhood located between downtown and the near-west side, and Census Tract 102, which represents the Historic Vineville Neighborhood and is located just west of Pleasant Hill and a mile north of Unionville. Prior to the construction of Interstate 75 and neighborhood physical split in the mid-20th century, Pleasant Hill was Macon's most well-to-do black neighborhood.  This neighborhood is a bit more diverse, but majority white (65%) Both of these border Macon's central business district. Occupancy rates and median household incomes are evaluated over a five year period (2015-19) for these three tracts, to hopefully determine if connection to downtown investment opportunities has begun to cause a revitalization.
+```{r}
+ #come back
+```
+The final level of analysis occurs entirely in Census Tract 104. The plan is to evaluate a potential relationship by road between Public Works Department response times to reported property neglect and the number of crimes to occur in 2020 on each road. The strongest precedent to the work is consistent reporting that a clear majority of Macon-Bibb's record breaking 51 homicides occurred in Unionville (Hicks, 2020). The following map visualizes Census Tract 104 close up, also indicating built barriers (interstate, university) that separate this from the larger area considered downtown:
+```{r}
+knitr::include_graphics("unionvillemap.png")
+
+```
+The data is still in process for this. But after evaluating these at the street level, tract-wide response times to crime rates may be compared with Tracts 101 and 138 as well. 
+
+# Data Sources
+The county wide and three tract comparative analyses rely on ACS 5 year data from the US census Bureau. These include Table B19013 (Median Household Income), Table B02001 (Race), and Table DP04 (Housing Characteristics) for years 2015, 2016, 2017, 2018, 2019. After importing selected variables, values are added using mutate for certain variables such as year and percentage black.
+
+While this data request is still in process, data for the final street by street analysis in Census Tract 104 will utilize sets imported from agencies within the combined Macon-Bibb County government. Crime data for 2020 will come from the "highly understaffed" Bibb County Sheriff's office and property neglect data will come from the county's license with "SeeClickFix". "SeeClickFix" allows residents to report instances of property neglect, lack of code enforcement, illegal dumping, and various other situations of public neglect. Complaints go into the potential scopes of eight government departments. These are Solid Waste and its privatized partner for residential trash disposal (ADS), Traffic, Recreation, Public Works, Facilities Management, Code Enforcement, Animal Services, Beautification (MaconBibb.us, 2021).
+
+#Preliminary Analysis
+While continuing to wait for local data, I went ahead and utilized Census data to contact county-wide and three tract comparisons.
+
+After running code and plotting the relationship between "Median Household Income" and "Proportion of Population that is Black/African American" in every census tract in Bibb County, Georgia, I got the following table:
+```{r}
+maconbibbmhi_2019 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2019, survey="acs5", output="wide") %>%
+select(NAME, B19013_001E) %>%
+rename(Neighborhood = NAME, mhi = B19013_001E) 
+maconbibbmhi_2019 
+
+maconbibb_blackpopulation_2019 <-get_acs(geography = "tract", state = "GA",county = "Bibb", table = "B02001", year=2019, survey="acs5", output="wide") %>% 
+rename(Neighborhood = NAME,
+       pop_tot= B02001_001E,
+       pop_black = B02001_003E) %>%
+ select(Neighborhood, pop_tot, pop_black) %>%
+ mutate(p_black = pop_black/pop_tot) %>%
+ select(Neighborhood, p_black)
+maconbibb_blackpopulation_2019
+
+NeighborhoodIncomeRace <- bind_cols(maconbibbmhi_2019, maconbibb_blackpopulation_2019) %>% 
+ rename(Neighborhood = Neighborhood...1) %>%
+ select(Neighborhood, mhi, p_black) 
+
+```
+The table was then adapted into a dot plot:
+
+```{r}
+macontract_mhi_race <- ggplot(NeighborhoodIncomeRace, aes(p_black, mhi)) + geom_point(color = "blue") + 
+scale_x_log10(labels = scales::percent) +
+scale_y_log10(labels = scales::dollar) + 
+labs(x = "Percentage Black by Census Tract", y = "Median Household Income",
+     title = "Median Household Income by Proportion of Population-Black",
+     subtitle =  "Ordered by Census Tract in Macon-Bibb County, Based on 2019 ACS 5 yr Estimates",
+     caption = "Source: (US Census Bureau, 2020)")
+
+```
+```{r}
+NeighborhoodIncomeRace
+```
+```{r}
+macontract_mhi_race
+```
+
+
+
+With the exception of one tract, which contains Mercer University and benefits from the Census' counting of students as low income individuals, every other tract in the low income category (<$30,000 for this context) is majority black. The highest income tract, 134.10, is only 12% black. It has a median household income of $91,116. Only one majority-black tract, 136.05, out of the 25 that are over half black has a median household income over $40,000. Its median household income is $70,379. This demonstrates a high level of inequality and presumed segregation, a consistent characteristic in majority-minority communities.
+
+A longitudinal comparison of the median household incomes in Tracts 101, 104, and 138 is tabulated with the following code:
+```{r}
+
+areasmhi19 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2019, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+mutate(year = case_when(
+  B19013_001M == "8942" ~ "2019",
+  B19013_001M == "4274" ~ "2019",
+  B19013_001M == "7694" ~ "2019") ) %>%
+select(NAME, B19013_001E, year) %>%
+rename(neighborhood = NAME, mhi = B19013_001E) 
+  
+
+areasmhi18 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2018, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 102, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 101, Bibb County, Georgia")) %>%
+mutate(year = case_when(
+  B19013_001M == "9704" ~ "2018",
+  B19013_001M == "6460" ~ "2018",
+  B19013_001M == "8050" ~ "2018") ) %>%
+select(NAME, B19013_001E, year) %>%
+rename(neighborhood = NAME, mhi = B19013_001E) 
+  
+
+areasmhi17 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2017, survey="acs5", output="wide") %>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+mutate(year = case_when(
+  B19013_001M == "5841" ~ "2017",
+  B19013_001M == "7934" ~ "2017",
+  B19013_001M == "5353" ~ "2017") ) %>%
+select(NAME, B19013_001E, year) %>%
+rename(neighborhood = NAME, mhi = B19013_001E)
+ 
+
+areasmhi16 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2016, survey="acs5", output="wide") %>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+mutate(year = case_when(
+  B19013_001M == "5466" ~ "2016",
+  B19013_001M == "8125" ~ "2016",
+  B19013_001M == "3078" ~ "2016") ) %>%
+select(NAME, B19013_001E, year) %>%
+rename(neighborhood = NAME, mhi = B19013_001E)
+  
+
+areasmhi15 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "B19013", year=2015, survey="acs5", output="wide") %>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+mutate(year = case_when(
+  B19013_001M == "4240" ~ "2015",
+  B19013_001M == "2629" ~ "2015",
+  B19013_001M == "4138" ~ "2015") ) %>%
+select(NAME, B19013_001E, year) %>%
+rename(neighborhood = NAME, mhi = B19013_001E) 
+ 
+
+areas5yr<- bind_rows(areasmhi15, areasmhi16, areasmhi17, areasmhi18, areasmhi19) 
+
+
+```
+
+
+And here is the accompanying line graph for the table
+```{r}
+lastfivemhi <- ggplot(areas5yr, aes(x = year, y = mhi, group = neighborhood)) + 
+geom_line(aes(color=neighborhood)) +
+geom_point(aes(color=neighborhood)) +
+scale_y_log10(labels=scales::dollar)+
+labs(x = "Year", y = "Median Household Income",
+     title = "Median Household Income in Three Comparison Neighborhoods by Year",
+     caption = "Source: (US Census Bureau: 2016-2020)")
+
+```
+
+
+```{r}
+areas5yr
+```
+
+```{r}
+lastfivemhi
+```
+
+
+According to analysis, Unionville actually experienced a higher increase in median household income. However, it is unclear if this is indication of increasing prosperity or further property investment for rental properties. A five year sample may also not provide the strongest indication of changes in area income. Another indicator surrounding housing utilization may give a stronger indication of general changes in prosperity and neighborhood health.
+
+A longitudinal comparison of the occupancy rates in Tracts 101, 104, and 138 is tabulated with the following code:
+```{r}
+vacancyrate19 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "DP04",  year=2019, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+  mutate(year = case_when(
+    DP04_0003PM == "9.8" ~ "2019",
+    DP04_0003PM == "8.3" ~ "2019",
+    DP04_0003PM == "7.1" ~ "2019"
+  )) %>%
+  rename(Neighborhood = NAME,
+         Properties = DP04_0001E,
+         Occupied = DP04_0002E,
+         Percent_Occupied = DP04_0002PE,
+         Percent_Vacant = DP04_0003PE) %>%
+   select(Neighborhood, Properties, Occupied, Percent_Occupied, Percent_Vacant, year) 
+
+vacancyrate18 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "DP04",  year=2018, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+  mutate(year = case_when(
+    DP04_0003PM == "6.9" ~ "2018",
+    DP04_0003PM == "8.3" ~ "2018",
+    DP04_0003PM == "7.7" ~ "2018"
+  )) %>%
+  rename(Neighborhood = NAME,
+         Properties = DP04_0001E,
+         Occupied = DP04_0002E,
+         Percent_Occupied = DP04_0002PE,
+         Percent_Vacant = DP04_0003PE) %>%
+   select(Neighborhood, Properties, Occupied, Percent_Occupied, Percent_Vacant, year) 
+
+vacancyrate17 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "DP04",  year=2017, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+  mutate(year = case_when(
+    DP04_0003PM == "8.4" ~ "2017",
+    DP04_0003PM == "7.4" ~ "2017",
+    DP04_0003PM == "8.9" ~ "2017"
+  )) %>%
+  rename(Neighborhood = NAME,
+         Properties = DP04_0001E,
+         Occupied = DP04_0002E,
+         Percent_Occupied = DP04_0002PE,
+         Percent_Vacant = DP04_0003PE) %>%
+   select(Neighborhood, Properties, Occupied, Percent_Occupied, Percent_Vacant, year) 
+
+vacancyrate16 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "DP04",  year=2016, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+  mutate(year = case_when(
+    DP04_0003PE == "18.9" ~ "2016",
+    DP04_0003PE == "34.1" ~ "2016",
+    DP04_0003PE == "43.5" ~ "2016"
+  )) %>%
+  rename(Neighborhood = NAME,
+         Properties = DP04_0001E,
+         Occupied = DP04_0002E,
+         Percent_Occupied = DP04_0002PE,
+         Percent_Vacant = DP04_0003PE) %>%
+   select(Neighborhood, Properties, Occupied, Percent_Occupied, Percent_Vacant, year) 
+
+vacancyrate15 <- get_acs(geography = "tract", state = "GA", county = "Bibb", table = "DP04",  year=2015, survey="acs5", output="wide")%>%
+filter(NAME %in% c("Census Tract 101, Bibb County, Georgia", "Census Tract 104, Bibb County, Georgia", "Census Tract 102, Bibb County, Georgia")) %>%
+  mutate(year = case_when(
+    DP04_0003PM == "7.3" ~ "2015",
+    DP04_0003PM == "7.8" ~ "2015",
+    DP04_0003PM == "8.4" ~ "2015"
+  )) %>%
+  rename(Neighborhood = NAME,
+         Properties = DP04_0001E,
+         Occupied = DP04_0002E,
+         Percent_Occupied = DP04_0002PE,
+         Percent_Vacant = DP04_0003PE) %>%
+   select(Neighborhood, Properties, Occupied, Percent_Occupied, Percent_Vacant, year) 
+
+vacancyrates5yr <- bind_rows(vacancyrate15, vacancyrate16, vacancyrate17, vacancyrate18, vacancyrate19)
+
+```
+The following graph shows the change in vacancy rate over time:
+
+```{r}
+lastfivevacancy <- ggplot(vacancyrates5yr, aes(x = year, y = Percent_Vacant, group = Neighborhood)) + 
+geom_line(aes(color=Neighborhood)) +
+geom_point(aes(color=Neighborhood)) +
+labs(x = "Year", y = "Vacancy Rate(%)",
+     title = "Vacancy Rate in Three Comparison Neighborhoods by Year",
+     caption = "Source: (US Census Bureau: 2016-2020)" )
+
+```
+```{r}
+vacancyrates5yr
+```
+
+
+```{r}
+lastfivevacancy
+```
+
+
+Admittedly, vacancy rate is an imperfect indication of blight. But drastic declines in the other two tracts suggest the involvement of public strategies to eliminate blight, either for housing rehabilitation or demolition to increase open space. The final report will include a further discussion of the community's blight bond program, which was adopted in 2015 (Macon-Bibb County Blight Committee, 2015).
+
+```{r}
+#Loading
+d5crime <- (read.csv("MACON-BIBB COMMMISION DISTRICT 5_crime.csv"))
+SCFd5<-(read.csv("District 5 info_seeclickfix.csv"))
+MostImportantComplaints <- (read.csv("District 5 narroweddown_seeclickfix.csv"))
+```
+
+
+```{r}
+d5crime <- d5crime %>% 
+  select(ï..Address, IncidentÂ.Type, Neighborhood) %>%
+  rename(Address = ï..Address, Type= IncidentÂ.Type) %>% 
+  mutate(StreetName = rm_number(Address))
+   
+d5neighborhood <- d5crime %>%
+  filter(Neighborhood %in% c("U", "PH", "V")) %>%
+  group_by(Neighborhood) %>%
+  summarise(Total = n())
+
+neighborhoodscrime <- d5neighborhood %>%
+  mutate(District = 686,
+         Proportion = (Total/District),
+         District = as.integer(District),
+        Proportion = (round(Proportion, digits = 3)) ) %>%
+  select(Neighborhood, Total, Proportion) %>%
+  rename("Incidents" = Total,
+         "Percentage of D5 Total Crime" = Proportion)
+    
+    
+crimebytype <- d5crime %>%
+  group_by(Type) %>%
+  summarise(Total = n(),
+            District = 686,
+            Proportion = (Total/District)) %>%
+   mutate(District = as.integer(District),
+          Proportion = as.integer(Proportion))
+
+neighborhoodtypes <- d5crime %>%
+  group_by(Neighborhood, Type) %>%
+  filter(Neighborhood %in% c("U", "PH", "V")) %>%
+  summarise(Total = n())
+
+crimebyneighborhood <- neighborhoodtypes %>%
+  pivot_wider(names_from = Neighborhood, values_from = Total) %>%
+ replace_na(list(PH = 0, V = 0, U = 0))
+
+percentcalcs <- left_join(crimebyhood, crimebytype) %>%
+  select(Type, U, PH, V, Total) %>%
+  mutate(UProportion = U/Total,
+         PHProportion = PH/Total,
+         VProportion = V/Total)%>%
+  mutate_at(6:8, round, 3)
+
+ProportionbyNeighborhood <- percentcalcs %>%
+  select(Type, UProportion, PHProportion, VProportion, Total) %>%
+  rename(PH = PHProportion,
+         U = UProportion,
+         V = VProportion)
+
+ProportionNeighborhoodLonger <- ProportionbyNeighborhood %>%
+  pivot_longer(c("PH", "U", "V"), names_to = "Neighborhood", values_to = "Proportion") %>%
+  mutate(Cases = Proportion * Total,
+         Cases = round(Cases, digits = 0), 
+        Proportion = round(Proportion, digits = 0),
+        Total = case_when(
+  Neighborhood == "V" ~ "45",
+  Neighborhood == "U" ~ "87",
+  Neighborhood == "PH" ~ "69"),
+       Total = as.integer(Total),
+       Proportion = Cases/Total,
+       Proportion = round(Proportion, digits = 3)) %>%
+  select(Type, Neighborhood, Proportion)
+
+
+crimebyStreetU <- d5crime %>%
+  filter(Neighborhood == "U") %>%
+  group_by(StreetName) %>%
+  summarise(Total = n()) %>%
+  filter(Total  >= 3) %>%
+  select(StreetName, Total) %>%
+  rename("Unionville Road/Intersection" = StreetName,
+         "# of Reported Crimes" = Total)
+   
+ 
+```
+
+
+```{r}
+neighbarhoods <- ggplot(neighborhoodscrime, mapping = aes(x = Neighborhood, y = Proportion)) + geom_bar(mapping = aes(fill = Neighborhood), stat='identity')  +
+scale_y_continuous(labels = scales::percent, breaks = c(.02, .04, .06, .08, .10, .12, .14, .16, .18, .20)) +
+  labs(x = "Neighborhood", y = "Proportion of Crime (%)",
+     title = "Proportion of District 5 Crime Rate, 2020",
+     subtitle = "Unionville, Vineville, and Pleasant Hill Neighborhoods",
+     caption = "Source: (Bibb County Sheriff's Department, 2021 )") +
+  annotate(geom = "text", x = "V", y = .12,
+           label =       
+           "These neighborhoods had 
+           201 cases, 29.3% of 
+           the District 5 total", 
+           size = 3,
+           fontface = 'italic')
+
+CrimeStack <- ggplot(ProportionNeighborhoodLonger,  mapping = aes(x = Neighborhood, fill = Type)) + 
+  geom_bar(aes(y = Proportion), position = "fill", stat = "identity") +
+  labs(x = "Neighborhood", y = "Proportion",
+     title = "Neighborhood Crimes by Type, 2020",
+     subtitle = "Unionville, Vineville, & Pleasant Hill Neighborhoods",
+     caption = "Source: (Bibb County Sheriff's Department, 2021 )") 
+
+UStreetBar <- ggplot(crimebyStreetU, mapping = aes(x = Total, y = StreetName)) + 
+  geom_bar(mapping = aes(fill = StreetName), stat='identity')  +
+  scale_x_continuous(breaks = c(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)) +
+  labs(x = "Reported Crimes", y = "Unionville Street or Intersection",
+     title = "Unionville Streets/Corners With Most Reported Crimes",
+     subtitle = "Included if Street/Intersection had >= 3 incidents in 2020",
+     caption = "Source: (Bibb County Sheriff's Department, 2021 )") 
+  
+
+
+
+ 
+
+```
+
+
+```{r}
+
+neighborhoodscrime
+```
+
+
+
+```{r}
+neighbarhoods
+```
+
+
+#Proportion of D5 Crime by Type in Each Neighborhood #
+```{r}
+ProportionbyNeighborhood
+
+```
+But in the following stacked bar chart, each neighborhood's proportion for each crime type is considered to the neighborhood's total crime rate instead of to the District's Incident Totals.
+
+```{r}
+CrimeStack
+```
+
+
+
+```{r}
+crimebyStreetU
+
+```
+```{r}
+UStreetBar
+```
+
+
+
+```{r}
+SCFd5
+SCFd5 <- SCFd5 %>% 
+rename("Neighborhood" = ï..Neighborhood, "Opened" = Created.at.Local, "Closed" = Closed.at.Local) %>%
+  filter(Neighborhood %in% c("U", "PH", "V")) %>%
+  select(Neighborhood, Status, Summary, Address, Opened, Closed, Time) %>%
+  group_by(Neighborhood) %>%
+  mutate(StreetName = rm_number(Address)) 
+
+IncompleteCases <- SCFd5 %>%
+  filter(Status %in% c("Acknowledged", "Open")) %>%
+  group_by(Neighborhood) %>%
+  summarise(Incomplete = n())
+  
+
+forscfcalcs <- SCFd5 %>%
+  filter(Status == "Archived") %>%
+  select(Neighborhood, Time) %>%
+  mutate(Time = as.numeric(Time)) %>%
+  group_by(Neighborhood) %>%
+  summarise(Time = mean(Time, na.rm = FALSE))
+
+seeclicklump <- SCFd5 %>%
+  group_by(Neighborhood) %>%
+  summarise(Complaints = n()) 
+
+seeclicklump <-  left_join(seeclicklump, IncompleteCases)  %>%
+  mutate(Solved = (Complaints-Incomplete)/Complaints)  
+
+
+seeclicklump <-  left_join(seeclicklump, forscfcalcs) %>%
+  mutate(Unsolved = 1 - Solved)
+
+avgresponseneighborhood <- seeclicklump %>%
+  select(Neighborhood, Complaints, Time)
+
+seeclicklump <- seeclicklump  %>%
+  select(Neighborhood, Solved, Unsolved)
+
+ seeclicklumplong <- seeclicklump %>%
+  pivot_longer(c(Solved, Unsolved), names_to = "Status", values_to = "Proportion")
+
+ComplaintbyStreet <- SCFd5 %>%
+  filter(Neighborhood == "U") %>%
+  group_by(StreetName) %>%
+  summarise(Total = n()) %>%
+  filter(Total >= 3) %>%
+  select(StreetName, Total)
+
+ 
+
+
+ 
+
+
+ 
+  
+```
+
+
+
+```{r}
+solvedbyneighborhood <- ggplot(data = seeclicklumplong, mapping = aes(x = Neighborhood, fill = Status))+
+ geom_bar(mapping = aes( y = Proportion), position = "fill", stat='identity')  + 
+  scale_y_continuous(
+   labels = scales::percent, 
+      breaks = c(.05,.10, .15, .2, .25, .5, .75, 1))  +
+  labs(x = "Neighborhood", y = "Percentage Solved",
+     title = "SeeClickFix- Status of Requests by Neighborhood",
+     subtitle = "Requests from 2020, Solved = Archived, Unsolved = Open or Acknowledged" ,
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )" ) 
+
+
+ 
+
+totalrequests <- ggplot(data= avgresponseneighborhood, mapping = aes(x = Neighborhood, y = Complaints, color = Neighborhood)) +
+  geom_bar(mapping = aes( fill = Neighborhood), stat = "identity") + scale_y_continuous(breaks = c(100,150, 200, 300, 400, 450, 500)) +
+  labs(x = "Neighborhood", y = "User Submitted Requests",
+     title = "See Click Fix- Requests by Neighborhood",
+     subtitle = "Requests Relating to Any Necessry Services, January 2020- Present" ,
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )") 
+  
+ 
+ 
+  
+ 
+ ResponseTimeAverage <- ggplot(data= avgresponseneighborhood, mapping = aes(x = Neighborhood, y = Time, color = Neighborhood)) +
+  geom_bar(mapping = aes( fill = Neighborhood), stat = "identity") + scale_y_continuous(breaks = c(5, 10, 15, 20, 25, 30, 35, 40)) +
+  labs(x = "Neighborhood", y = "Average Time Open (days)",
+     title = "See Click Fix Response Period",
+     subtitle = "Average Number of Days Between Request Submission and Archival" ,
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )") 
+ 
+ 
+UStreetComplaints <- ggplot(ComplaintbyStreet, mapping = aes(x = Total, y = StreetName)) + geom_bar(mapping = aes(fill = StreetName), stat='identity')  + scale_x_continuous(breaks = c(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)) +
+   theme(legend.position = "none") +
+  labs(x = "Requests by Street", y = "Street in Unionville",
+     title = "Unionville Streets With Most SeeClickFix Requests",
+     subtitle = "Included if Street/Intersection had >= 3 Requests in 2020",
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )")  
+ 
+```
+
+
+```{r}
+seeclicklump
+
+```
+```{r}
+solvedbyneighborhood
+```
+```{r}
+ResponseTimeAverage
+```
+
+
+
+
+```{r}
+avgresponseneighborhood
+```
+
+
+
+```{r}
+totalrequests
+```
+
+```{r}
+ComplaintbyStreet
+```
+```{r}
+UStreetComplaints
+```
+
+
+
+
+Out of the over 100 different request "summaries" found in the District 5 table, I narrowed the set down to 27 "crucial" request categories. These categories can be clearly traced to tasks performed by four governmental departments that should be instrumental in mitigating blight, illegal dumping, and other instances of property or community neglect that consistently afflict under served, majority black neighborhoods. The summaries in the crucial request category are as follows:
+
+"Code Enforcement: Abandoned/ Inoperable/Junk Cars or Vehicles",
+"Code Enforcement: Burned House",
+"Code Enforcement: COMMERCIAL",
+"Code Enforcement: Home Repair Exterior",
+"Code Enforcement: Code Enforcement: Vacant\Abandoned\Dilapidated ",
+"Code Enforcement: Yards\Premises OR Vacant lot",
+"PROPERTY MAINT - Abandoned/ Inoperable/Junk Cars or Vehicles",
+"PROPERTY MAINT - Burned House",
+"PROPERTY MAINT - COMMERCIAL",
+"PROPERTY MAINT - Vacant\Abandoned\Dilapidated",
+"PROPERTY MAINT - Yards\Premises OR Vacant lot",
+"Public Works: Alley - needs cleaning",
+"Public Works: Pot hole",
+"Public Works: Litter",
+"Public Works: Alley -Scrape Add Crush & Run",
+"Public Works: Clean Macon Bibb Owned Property",
+"Public Works: Sidewalk",
+"Public Works: Cut Right-Of-Way",
+"Public Works: Barrels/Cones",
+"Public Works: Streets",
+"S-WASTE: Animal - Dead Pickup Request",
+"S-WASTE: Debris | Limbs | Yard Clippings | Bulky Waste",
+"S-WASTE: Downtown Garbage/Recycling Carts",
+"S-WASTE: Eviction Debris",
+"S-WASTE: Furniture/Appliances",
+"S-WASTE: Illegal dumping",
+"S-WASTE: Tires"
+
+The same analyses from the full set of requests are performed below for this 27 category summary.
+
+```{r}
+MostImportantComplaints <- MostImportantComplaints %>% 
+rename("Neighborhood" = ï..Neighborhood, "Opened" = Created.at.Local, "Closed" = Closed.at.Local, "Time" = Time.Elapsed) %>%
+  filter(Neighborhood %in% c("U", "PH", "V")) %>%
+  select(Neighborhood, Status, Summary, Address, Opened, Closed, Time) %>%
+  group_by(Neighborhood) %>%
+  mutate(StreetName = rm_number(Address))
+
+ 
+   UnsolvedSelect <- MostImportantComplaints %>%
+  filter(Status %in% c("Acknowledged", "Open")) %>%
+  group_by(Neighborhood) %>%
+  summarise(Incomplete = n())
+  
+selectclicklump <- MostImportantComplaints %>%
+  group_by(Neighborhood) %>%
+  summarise(Complaints = n())
+
+selectcaseaverages <- MostImportantComplaints %>%
+  filter(Status == "Archived") %>%
+  select(Neighborhood, Time) %>%
+  mutate(Time = as.numeric(Time)) %>%
+  group_by(Neighborhood) %>%
+  summarise(Time = mean(Time, na.rm = FALSE))
+ 
+
+selectclicklump <- left_join(selectclicklump, UnsolvedSelect) %>%
+  mutate(Solved = (Complaints-Incomplete)/Complaints)
+
+
+ selectclicklump <-left_join(selectclicklump, selectcaseaverages) %>%
+    mutate(Unsolved = 1 - Solved) 
+ 
+ avgresponsedire <- selectclicklump %>%
+  select(Neighborhood, Complaints, Incomplete, Time)
+
+selectclicklump<- selectclicklump %>%
+  select(Neighborhood, Solved, Unsolved)
+
+
+selectclicklumplong <- selectclicklump %>%
+  pivot_longer(c(Solved, Unsolved), names_to = "Status", values_to = "Proportion")
+
+
+  
+SCFUbystreet <- MostImportantComplaints %>%
+  filter(Neighborhood == "U") %>%
+  group_by(StreetName)%>%
+  summarise(Total = n()) %>%
+  filter(Total >= 2) %>%
+  select(StreetName, Total)
+ 
+```
+
+```{r}
+solveddireneighborhood <- ggplot(data = selectclicklumplong, mapping = aes(x = Neighborhood, fill = Status))+
+ geom_bar(mapping = aes( y = Proportion), position = "fill", stat='identity')  + 
+  scale_y_continuous(
+   labels = scales::percent, 
+      breaks = c(.05,.10, .15, .2, .25, .5, .75, 1))  +
+  labs(x = "Neighborhood", y = "Percentage Solved",
+     title = "SeeClickFix- Status of Crucial Requests by Neighborhood",
+     subtitle = "Requests from 2020, Solved = Archived, Unsolved = Open or Acknowledged" ,
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )" ) 
+
+
+totaldire <- ggplot(data= avgresponsedire, mapping = aes(x = Neighborhood, y = Complaints, color = Neighborhood)) +
+  geom_bar(mapping = aes( fill = Neighborhood), stat = "identity") + scale_y_continuous(breaks = c(15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165)) +
+  labs(x = "Neighborhood", y = "User Submitted Requests",
+     title = "SeeClickFix- Crucial Requests by Neighborhood",
+     subtitle = "Requests Relating to Crucial Services, 2020" ,
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )") 
+ totaldire
+ 
+ AverageResponseforDire <- ggplot(data= avgresponsedire, mapping = aes(x = Neighborhood, y = Time, color = Neighborhood)) +
+  geom_bar(mapping = aes( fill = Neighborhood), stat = "identity") + scale_y_continuous(breaks = c(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)) +
+  labs(x = "Neighborhood", y = "Average Time Open (days)",
+     title = "SeeClickFix Response Period- Crucial Requests",
+     subtitle = "Average Number of Days Between Submission and Archival" ,
+     caption = "Source: (Macon-Bibb County Office of communications, 2021 )") 
+ AverageResponseforDire
+ 
+  UStreetDire <- ggplot(SCFUbystreet, mapping = aes(x = Total, y = StreetName)) + geom_bar(mapping = aes(fill = StreetName), stat='identity')  + scale_x_continuous(breaks = c(2, 4, 6, 8, 10, 12, 14, 16)) +
+   theme(legend.position = "none") +
+  labs(x = "Requests by Street", y = "Street in Unionville",
+     title = "Unionville Streets With Most SeeClickFix Requests",
+     subtitle = "Included if Street/Intersection had >= 3 Requests in 2020",
+     caption = "Source: (Macon-Bibb County Office of Communications, 2021 )") 
+ 
+ 
+ 
+ 
+```
+```{r}
+ selectclicklump
+```
+
+
+
+```{r}
+solveddireneighborhood
+```
+
+
+```{r}
+
+avgresponsedire
+
+```
+```{r}
+totaldire
+```
+
+```{r}
+AverageResponseforDire
+```
+```{r}
+SCFUbystreet
+```
+```{r}
+UStreetDire
+```
+
+
+
+
+#Directions for the Future
+After completing the third phase of my analysis at the street level in Census Tract 104, I will look more deeply into conclusions that can be made about the Unionville neighborhood's direction. n important part of the extension component is to create an informal engagement plan, including mock deliverables for duration, funding, and survey/interview designs.  
+
+After the course and project experience are completed, a definite step is sharing these results with my county commissioner and a few resident organizers he plans to connect me with, along with a few other local organizers who live elsewhere but are closely connected. After hearing their thoughts and questions, I can hopefully figure out how to make some modifications that will make this an even stronger resource for a hyperlocal coalition.  
+
+
+#Sources (will be cited in APA for the Final Submissions)
+
+https://www.maconbibb.us/cleanstreetsmatter/ 
+
+https://www.13wmaz.com/article/news/crime/macon-sees-record-breaking-number-of-homicides-in-2020/93-a3ca65b1-192e-4881-b98d-f82e106e98a4
+
+https://www.macon.com/news/local/article141068143.html 
+
+https://www.maconbibb.us/web-maps-for-seeclickfix/ 
+
+https://www.boarddocs.com/ga/maconbibb/Board.nsf/files/9YQ3DC76334E/$file/Ordinance%20Amendment%20Adopt%20Budget%20Blight%20%249000000%2000.pdf
+
+US Census Tables: DP04, B19013, B201001 for years 2015, 2016, 2017, 2018, and 2019.
+
+Individual layers  on maps made with ArcGIS online came from layers shared in the opendata ArcGIS Online platform. Parenthetical citations are included with each.
