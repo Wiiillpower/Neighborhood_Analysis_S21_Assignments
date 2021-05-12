@@ -1,19 +1,19 @@
 # Neighborhood Analysis: Assignments
 
-## **Name:** Your Name Here
+## **Name:** Will Finkelstein
 
 ## Contents:
 
 | Assignment | Upload Date (latest) | Notes |
 |-|-|-|
-| Grading Contract |  |  |
-| R Learner's Permit |  |  |
-| Class Reflections |  |  |
-| Polished Lab Notebooks |  |  |
-| Final Project Proposal |  |  |
-| Final Project Background |  |  |
-| Final Project Presentation |  |  |
-| Final Project |  |  |
+| Grading Contract |March 2  |.docx  |
+| R Learner's Permit | February 21  |.rmd  |
+| Class Reflections |March 6 (Most Recent)  |.docx  |
+| Polished Lab Notebooks | Notebook 1 Uploaded March 21 |.html  |
+| Final Project Proposal |March 6  |.html  |
+| Final Project Background |April 10  |.html  |
+| Final Project Presentation |Given May 4, Slides Uploaded May 11  |.pptx  |
+| Final Project |Uploaded May 11  |.html  |
 
 **Notes:** 
 
