@@ -1,0 +1,492 @@
+---
+title: "Lab Book #2- Segregation in Chicago"
+author: "Will Finkelstein, MUP1"
+date: "3/9/2021"
+output:
+  html_notebook:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+  pdf_document:
+    toc: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+Two weeks ago, you spent some time learning about ways to measure the distribution of the population by race and ethnicity. This lab builds upon that past knowledge, primarily by helping you to visualize and analyze these distributions spatially.
+
+## Description and Goals
+In this lab, we will use American Community Survey data to perform some exploratory data visualization for the Chicago Metropolitan Area, focusing on describing residential segregation based upon race and income. Our goals for this lab are as follows:
+
+- Continue to gain experience with `tidycensus` and `ggplot`
+- Learn some additional qualities of simple feature geometries, which allows R to manipulate spatial data
+- Gain more experience with `geom_sf()` and mapping simple feature geometries
+- Apply several measures of spatial segregation to analyze regional patterns
+
+By the end of this lab, you will implement a data pipeline to programmatically download, map, and describe elements of residential segregation for a city and its region.
+
+## Set Up Workspace
+
+Let's go ahead and programmatically create a few directories to help us keep our workspace organized. You'll recall that we learned how to use `dir.create()` in the past to insert new directories into our "home" directory which is set based upon where our project .Rmd file is located.In this case, we'll create the typical folders we work with to keep our labs organized - data, documentation, output, and scripts.
+
+```{r}
+dir.create("data")
+dir.create("documentation")
+dir.create("output")
+dir.create("scripts")
+```
+
+## Load Required Packages
+Let's start by loading the `tidyverse` and `tidycensus` packages. You can add other packages here as we need them so that they load at the beginning of our notebook.
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+census_api_key("f6d3f308f00a0ffda3aa19e86807e0ea5960d86e", install = TRUE, overwrite=TRUE)
+```
+
+# Download Census Data
+
+## Download ACS Data
+
+Now let's go ahead and download some census data which we'll use to calculate segregation measures with. For this lab, we'll download the data at the census tract level for all tracts in Illinois (later on, we'll pull out pertinent counties in the Chicago metropolitan statistical area). Let's calculate the following measures:
+
+| ACS Table | Variables                | Label    | Description                                            |
+|-----------|--------------------------|----------|--------------------------------------------------------|
+| B01001    | B01001_001E              | Pop      | Total Population                                       |
+| B02001    | B02001_002E              | White    | Count of White Population                              |
+| B02001    | B02001_003E              | Black    | Count of Black Population                              |
+| B02001    | B02001_004E              | AIAN     | Count of American Indian and Alaskan Native Population |
+| B02001    | B02001_005E              | Asian    | Count of Asian Population                              |
+| B02001    | B02001_001E, B02001_002E | Nonwhite | Count of Nonwhite Population                           |
+| B03001    | B03001_003E              | Latino   | Count of Latino Population                             |
+| B19013    | B19013_001E              | MHHI     | Median Household Income                                |
+
+I am going to do you a favor - I have written a script that will download these variables for you. In order for it to work, you will need to supply the script with some variables, namely your census API key, the download year, the geographic summary level you wish to download, the state, and the ACS survey product you wish to download. Let's download 2019 5-year American Community Survey data. 
+
+- api_key: Your Census API Key
+- DL_Year: The end year for the data you wish to download
+- survey: The name of the survey you wish to download (this coud be "acs1", "acs3", or "acs5")
+- geo: The geographic summary level you wish to download (following `tidycensus` nomenclature)
+- state: The name(s) of the state(s) you wish to download data for. 
+
+```{r}
+# Your Work Here
+api_key<-"f6d3f308f00a0ffda3aa19e86807e0ea5960d86e"
+DL_Year<-2019
+survey <- "acs5"
+geo<-"tract"
+state<-c("IL")
+
+```
+
+If you look in the lab folder, there is a script called "1_Get_ACS.R"
+
+Take a look at how the `get_acs()` call is set up within the script. What's going on here?
+
+*Your Description*
+
+We can ask R to run this entire script for us using the `source()` command. Make sure your variabes are correctly set up above before running:
+```{r}
+source("1_Get_ACS.R")
+```
+
+R is running all of the code contained in that script without us having to open it. It starts at the beginning and runs until it reaches the end of the script. This can be useful for creating code sub-components that you can run from within other scripts or notebooks. 
+
+You now have a dataset called acs_data containing 3,123 observations of 15 variables. These variables include the population (Pop), Population by race and ethnicity, and the median household income (MHHI) for each census tract. I've also calculated for you the percent of the population by race and ethnicity (you should check the script to see how this was done). Ok - we have our ACS data. 
+
+# Download Geographic Data
+
+Next, let's also download spatial data associated with tract geographies.
+
+The `tigris` package is designed to download data directly from the census API. Unlike the `tidycensus` package, it does not require an API key. `tigris` can download geographies as shapefiles (a format commonly used by commercial GIS programs like ArcGIS), but even more conveniently, it can download these data in a format called *simple features*. 
+
+As you should recall from our last session, Simple Features (the sf package) store geographic attributes as rows in a table, with a special additional row called geometry which stores the coordinates associated with the geography. These coordinates are stored as a list which R can then recall and plot out. You can read more about how simple features are organized [here](https://r-spatial.github.io/sf/articles/sf1.html).
+
+Let's download census tracts for Illinois and take a look. Tigris can download a range of geography types. We can use the `tracts()` function to download tracts. We specify a state and also specify that we want tigris to download the spatial information in simple feature format `class="sf"`.
+
+Load both the tigris and sf package and download tracts for Illinois into an object called il_trt.
+
+```{r}
+library(sf)
+library(tigris)
+il_trt<-tracts(state="IL", class="sf")
+```
+
+Take a look at the tract data - each row is a census tract. There are multiple columns describing each tract. The geometry column contains coordinates.
+
+Confirm that you got what you were expecting by plotting these data. Remember that in ggplot, you can use `geom_sf()` to plot. It will take a moment to plot, as it is rendering lots of detail for each census tract in Illinois:
+
+```{r}
+# Your Code Here
+ggplot() + geom_sf(data=il_trt)
+```
+This plot looks roughly like the state of Illinois - good enough to feel comfortable with moving forward.
+
+Go ahead and join the ACS data contained in acs_data data *to* the tract data contained in il_trt. The common field between the two is GEOID. 
+
+```{r}
+# Your Code Here
+il_trt <- left_join(il_trt, acs_data, by = "GEOID")
+```
+
+# Re-introducing geom_sf()
+
+We have not programmatically downloaded geographic and tract attribute data and joined them together. Let's venture into using R as a way to visualize spatial data.
+
+Last week, you began exploring the visualization features of the `ggplot2` package. Let's continue to build on this by plotting our data containing simple feature geometries. We're going to focus specifically on understanding dimensions of segregation for census tracts in the Chicago metropolitan area.
+
+Let's go ahead and select a subset of these data - the census tracts for the counties that make up the Illinois portion of the Chicago Metropolitan Area. For your convenience, here's the names of those counties and their associated county FIPS codes:
+
+| County  | FIPS |
+|---------|------|
+| Cook    | 031  |
+| DeKalb  | 037  |
+| DuPage  | 043  |
+| Grundy  | 063  |
+| Kane    | 089  |
+| Kendall | 093  |
+| Lake    | 097  |
+| McHenry | 111  |
+| Will    | 197  |
+
+Create a new object called "chi" which contains the records from il_trt for the subset of Illinois counties that are in the Chicago metropolitan area. After this, go ahead and create a map of these Chicago metropolitan tracts.
+```{r}
+# Your Code Here
+chi <- il_trt %>% filter(COUNTYFP %in% c("031", "037", "043", "063", "089", "093", "097", "111", "197"))
+ggplot() + geom_sf(data=chi)
+
+```
+
+Okay - now we're getting somewhere - we can see more of the definition of the tracts. Something should give you pause, however. There are two gigantic tracts which cover portions of Lake Michigan associated with Cook and Lake Counties (For those not familiar with Chicago, Cook County is the county in which Chicago is located and Lake County is just north of it). These two tracts contain no population (they're all water, after all) and we can remove them.
+
+Look through the il_trt dataset and identify the two tracts for which ALAND (land area) is 0. Filter these out of chi, and then re-plot.
+
+```{r}
+# Your Code Here
+chi <- chi %>% filter(!GEOID %in% c("17031990000","17097990000"))
+ggplot()+geom_sf(data = chi)
+
+```
+# Mapping Race
+
+Okay - we've got the geographic component of our data sorted out. Now let's try visualizing some of the attributes of the data. We've already mapped the tracts for which we're interested in seeing race information for. To visualize an attribute of the dataset, we need to add an aesthetic mapping using `aes()`. In this case, we want to specify that the fill color for each of our census tracts comes from a particular variable (column) from the il_trt data table. Let's start by visualizing the PWhite (percent white) data:
+
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = PWhite))
+```
+Okay - we have a map that now also includes a legend for our continuous variable (percentage white). We also have a few tracts that are grayed out - they have no population (notice that one of these is O'Hare airport). 
+
+One challenge here is that at this scale, the tract boundaries (gray lines) obscure some of the census tract data. We could set the line color (census tract boundary) to be the same as the data for its respective tract using the colour aesthetic mapping:
+
+```{r}
+ggplot()+geom_sf(data=chi, aes(fill = PWhite, colour = PWhite))
+```
+This certainly allows us to see the tract data clearly.
+
+It might be useful to have some boundaries to help us here. County boundaries, for instance might be useful. We could download the county data, or we could simply generate it from the tract data which we already have.
+
+One special feature of simple features (sf) objects is that we can use `group_by()` and `summarise()` as we would on our data table, and it will also re-calculate and aggregate geometries in our maps. In this case, we can use our census tracts (which are hierarchical) to generate our county-level data and geographies. While we're at it, let's also summarize counts for population, race, and ethnicity:
+```{r}
+co<-chi %>% group_by(COUNTYFP) %>% summarise(
+  Pop_co = sum(Pop),
+  White_co = sum(White),
+  Black_co = sum(Black),
+  AIAN_co = sum(AIAN),
+  Asian_co = sum(Asian),
+  Latino_co = sum(Latino),
+  Nonwhite_co = sum(Nonwhite)
+  )
+co
+```
+
+Now go ahead and plot the county-level data (no fill yet):
+```{r}
+# Your Code Here
+ggplot() + geom_sf(data = co)
+```
+We created county boundaries from our census tracts.
+
+We can now layer the counties in with our tract level data. We need to tell ggplot not to include fill for the county-level data so that we can see the tracts below them:
+
+```{r}
+ggplot()+
+  geom_sf(data=chi, aes(fill = PWhite, colour = PWhite))+
+  geom_sf(data=co, fill=NA)
+```
+See how plotting county boundaries over the tract-level data helps to give us a point of reference for our map?
+
+While we're at it, it might be useful for us to think about other ways to represent these data. The map is helpful, but we may also want to look at univariate characteristics. Building upon your knowledge from prior weeks, make a histogram of the percentage white population for the Chicago Metro area using `geom_histogram()`:
+
+```{r}
+# Your Code Here
+ggplot() + geom_histogram(data=chi, aes(x=PWhite))
+```
+Take a look at the distribution of tracts - how would you characterize or describe this?
+
+We learned briefly about faceting in our introductory data visualization lab. Let's try that again here. Use facets to split our data into smaller multiples that can be plotted separately. Let's add a facet using `facet_wrap()` based upon the county (`facet_wrap~COUNTYFP)`):
+
+```{r}
+# Your Code Here
+ggplot() + 
+geom_histogram(data=chi, aes(x=PWhite)) +
+facet_wrap(~COUNTYFP)
+
+```
+How would you describe this visualization in plain text? How might we improve this or make it more legible?
+County `031`, presumably Cook, has the most tracts by far and most consists of homogenously black and majority white tracts. The other counties have much fewer tracts, with a clear white majority in most of them. Having more levels on the y axis, a better color, and axis labels (percentage and tract count), along with a descriptive county name for each code, could make this easier to read for a lay person)
+*Your Description Here*
+
+Try to implement those improvements you mention.
+```{r}
+# Your Code Here
+ggplot(data=chi, aes(x=PWhite)) + 
+geom_histogram(color = "black",fill = "blue") +
+scale_y_continuous(breaks = c(5, 10, 15, 20, 40, 60, 80, 100))+
+labs(x = "Percentage White", y = "Number of Tracts",
+     title = "Percentage White Population in Each Tract by County",
+     subtitle = "Chicago Metropolitan Region", 
+     caption = "Source: US Census Bureau") +
+facet_wrap(~COUNTYFP)
+```
+Now that you have a better sense of the distribution of the white population within the region, try your hand at independently visualizing other racial groups:
+
+```{r}
+# Your Work Here
+ggplot(data=chi, aes(x=PBlack)) + 
+geom_histogram(color = "black",fill = "orange") +
+scale_y_continuous(breaks = c(5, 10, 15, 20, 50, 100, 150, 200))+
+labs(x = "Percentage Black", y = "Number of Tracts",
+     title = "Percentage Black Population in Each Tract by County",
+     subtitle = "Chicago Metropolitan Region", 
+     caption = "Source: US Census Bureau") +
+facet_wrap(~COUNTYFP)
+
+ggplot(data=chi, aes(x=PLatino)) + 
+geom_histogram(color = "black",fill = "green") +
+scale_y_continuous(breaks = c(5, 10, 30, 50, 70, 100))+
+labs(x = "Percentage Latino", y = "Number of Tracts",
+     title = "Percentage Latino Population in Each Tract by County",
+     subtitle = "Chicago Metropolitan Region", 
+     caption = "Source: US Census Bureau") +
+facet_wrap(~COUNTYFP)
+```
+
+# Measuring Racial Segregation
+
+Now that we have a basic idea of the racial distribution for census tracts within the region, we can start to think about summary measures of the extent to which these groups are segregated within the region. We will use census tracts as a unit of analysis to help us describe county-level racial segregation.
+
+## Dissimilarity
+*Dissimilarity* is a common measure of *evenness* between two populations - dissimilarity measures the distribution of a minority population within a majority population. Conceptually, dissimilarity measures the proportion of that minority or subgroup population that would need to move in order to be equally distributed with the majority population. Dissimilarity is calculated as follows:
+
+$D = .5*\sum_i |\frac{b_i}{B}-\frac{w_i}{W}|$
+where
+$b_i$ is the number of blacks in tract *i*
+$B$ is the number of blacks for the county
+$w_i$ is the number of whites in tract *i*
+$W$ is the number of whites for the county
+
+Now that we know the formula, we can start thinking about how to translate this into dplyr notation.
+
+### Black-White Dissimilarity
+This looks complicated, but we can actually do this fairly simply with dplyr notation. Let's start off by calculating Black-White dissimilarity.
+
+We have our white and black tract population data already in our il_trt data, and we have our county data in a separate object. Let's go ahead and join that county data to our tract data.
+
+```{r}
+chi<-left_join(chi, co %>% st_set_geometry(NULL), by="COUNTYFP")
+```
+
+Notice that this join looks pretty standard with the exception of `st_set_geometry(NULL)`. The county level data has spatial geometry associated with it that we do not necessarily want to join to our tract-level data since that has its own geometry as well. `st_set_geometry(NULL)` removes the geometry from the county data, basically turning it into a plain old data table.
+
+Now that we've joined that, we can start breaking down the dissimilarity formula into code-able pieces. Inside the absolute value we are calculating fractions of tract minority and majority populations compared to their county. We then subtract these from each other and use `abs()` to find the absolute value. After that, we need to sum these all up and multiply by .5. We are calculating these by county, so we can use group_by() to sum up only the data for each county to produce a series of final dissimilarity statistics for each county in the Chicago metropolitan area.
+
+```{r}
+chi %>% mutate(dissim_wb = abs(Black / Black_co - White / White_co)) %>% group_by(COUNTYFP) %>% summarise(dissimilarity = .5*sum(dissim_wb))
+```
+
+How would you interpret these black-white dissimilarity values? Where is Black-White dissimilarity the highest within the region? Where is it the lowest?
+
+Your turn - calculate nonwhite-white dissimilarity and Latino-white dissimilarity measures for the counties in the Chicago metropolitan area.
+
+## Nonwhite-White Dissimilarity
+```{r}
+# Your Code Here
+ chi %>% mutate(dissim_wnw = abs(Nonwhite /Nonwhite_co - White / White_co)) %>% group_by(COUNTYFP) %>% summarise(dissimilarity = .5*sum(dissim_wnw))
+
+
+```
+
+Compare and contrast this with Black-White dissimilarity, and write down your thoughts.
+
+**Your Thoughts Here**
+Counties are mostly less dissimilar in the nonwhite-white category than the black-white category.
+## Latino-White Dissimilarity
+```{r}
+# Your Code Here
+ chi %>% mutate(dissim_lw = abs(Latino /Latino_co - White / White_co)) %>% group_by(COUNTYFP) %>% summarise(dissimilarity = .5*sum(dissim_lw))
+```
+
+Compare and contrast this with Black-White dissimilarity, and write down your thoughts.
+
+**Your Thoughts Here**
+This is also less dissimilar than the Black-White section.
+
+# Interaction
+A second common measure of segregation is *interaction* which is a measure of *exposure*. Interaction measures the likelihood of population subgroups interacting with one another based upon their distribution within areal sub units (tracts). For instance, Black-White interaction is calculated as follows:
+
+$Interaction = \sum_i\frac{b_i}{B}*\frac{w_i}{t_i}$
+Where
+$b_i$ is the Black population of tract *i*
+$B$ is the Black population of the county
+$w_i$ is the White population of tract *i*
+$t_i$ is the total population of tract *i*
+
+Given that there are some similarities to the dissimilarity index, modify your existing code to measure Black White interaction for counties in the Chicago Metropolitan Area:
+```{r}
+# Your Code Here
+chi %>% mutate(inter_wb = abs((Black / Black_co) * (White / Pop))) %>% group_by(COUNTYFP) %>% summarise(interaction = sum(inter_wb, na.rm = TRUE))
+```
+The output here is actually a *probability* that ranges from 0 to 1. A value closer to 1 indicates a higher probability of there being contact between these two population groups. A value closer to 0 indicates lower probabilities of contact.
+
+Provide your interpretation of Black-White Interaction for Chicago metro counties.
+Cook has the lowest probability of interaction by far, while Grundy and McHenry have much higher rates of interaction. These two are both over 90% white, it is worth mentioning.
+Now go ahead and calculate Non-White - White Interaction.
+```{r}
+# Your Code Here
+chi %>% mutate(inter_wnw = abs((Nonwhite / Nonwhite_co) * (White / Pop))) %>% group_by(COUNTYFP) %>% summarise(interaction = sum(inter_wnw, na.rm = TRUE))
+```
+
+Finally, go ahead and calculate Latino - White Interaction.
+```{r}
+# Your Code Here
+chi %>% mutate(inter_wl = abs((Latino / Latino_co) * (White / Pop))) %>% group_by(COUNTYFP) %>% summarise(interaction = sum(inter_wl, na.rm = TRUE))
+```
+
+How would you interpret Black-White, Non-White White, and Latino-White interaction jointly? Across the board, the Latino-White interactions are most probable.
+
+# Isolation
+The final measure of racial segregation we'll look at in this lab is *isolation* which is only measured for one group at a time. Isolation measures the likelihood of contact for a subgroup with other subgroup members. It is interpreted similarly to Interaction (as a probability ranging from 0 to 1):
+
+Isolation for Blacks
+$Isolation = \sum_i\frac{b_i}{B}*\frac{b_i}{t_i}$
+Where
+$b_i$ is the Black population of tract *i*
+$B$ is the Black population of the county
+$t_i$ is the total population of tract *i*
+
+Modify your existing code to calculate Black Isolation by county for the Chicago Metropolitan Area:
+```{r}
+# Your Code Here
+chi %>% mutate(iso_b = abs((Black / Black_co) * (Black / Pop))) %>% group_by(COUNTYFP) %>% summarise(isolation = sum(iso_b, na.rm = TRUE))
+```
+ You know what comes next. Calculate Nonwhite Isolation and Latino Isolation and interpret what you see.
+
+Nonwhite Isolation
+```{r}
+# Your Code Here
+chi %>% mutate(iso_nw = abs((Nonwhite / Nonwhite_co) * (Nonwhite / Pop))) %>% group_by(COUNTYFP) %>% summarise(isolation = sum(iso_nw, na.rm = TRUE))
+
+```
+
+Latino Isolation
+```{r}
+# Your Code Here
+chi %>% mutate(iso_l = abs((Latino / Latino_co) * (Latino / Pop))) %>% group_by(COUNTYFP) %>% summarise(isolation = sum(iso_l, na.rm = TRUE))
+
+```
+
+# Income Inequality
+While we're at it, let's also pay attention to segregation on the basis of income. A simple measure of income inequality and distribution is to calculate the difference in median income between the county and the census tracts that make up the county.
+
+We have all of our census tract data, but need to go back to census data to download county median household income for each county in the Chicago metro area (this is not a place to take the average or weighted average of the tract-level data). Go ahead and download those data and prepare them for joining to our tract data:
+```{r}
+# Your Code Here
+B19013<-get_acs(geography = "county", state = state, variables = B19013_Vars, survey = survey, year = DL_Year, output = "wide")
+B19013$MHHI_co<-B19013$B19013_001E
+B19013$MHHI_co[B19013$MHHI_co == "NaN"]<-NA
+B19013<-B19013 %>% select(GEOID, MHHI_co)
+```
+
+Now start thinking about how you'll accomplish this join. The county-level data have a GEOID that includes the combined state and county FIPS codes (e.g. "17031") means Illinois - Cook County. Your tract-level data lists the State and County FIPS codes separately, but not together. Right now, you don't have a common field to join on.
+
+Given that we conveniently have separate state (STATEFP) and county (COUNTYFP) codes, we can concatenate these together into a code that will match up to the GEOID field in our county median household income data:
+```{r}
+chi<-chi %>% mutate(COUNTY = paste0(STATEFP, COUNTYFP))
+```
+
+Recall that `paste0()` pastes fields together with no spaces between them.
+
+Okay now you're on track to go ahead and join the county-level median household income data to your tract-level data. Do so, but remember that your `by=` field will look a bit different since the matching fields have different names in the two datasets:
+
+```{r}
+# Your Work Here
+chi <- left_join(chi, B19013, by =c("COUNTY" = "GEOID"))
+
+```
+Now we can calculate the ratio of income for our census tract to that of the county:
+
+```{r}
+chi<-chi %>% mutate(inc_ratio = MHHI / MHHI_co)
+```
+Now go ahead and map out this income ratio statistic for the Chicago Metropolitan Area:
+```{r}
+# Your Code Here
+ggplot()+
+  geom_sf(data = chi, aes(fill=inc_ratio), colour = NA) +
+   labs(title = "Income Ratio for the Chicago Region", fill = "Income Ratio")+
+  geom_sf(data=co, fill=NA) +
+  theme_minimal()
+
+```
+What would a ratio of 1 indicate? What would a ratio of 4 indicate? Where do we see big differences?
+A Ratio of 1 means the tract has the same median income as the county, while a ratio of 4 suggests that the tract has a much higher median income than the whole. Unsurprisingly, Cook also has the highest visual  variance.
+
+While we're at it, it might be interesting to create a scatter plot that illustrates the relationship between racial concentration and income. Give that a try (plot the Percent White on the X axis and the income ratio on the y axis using geom_point):
+```{r}
+ggplot()+
+  geom_point(data=chi, aes(x=PWhite, y=inc_ratio)) +
+  labs(title = "My Cool Plot", x = "Percent White", y = "Income Ratio")
+```
+How would you describe this relationship?
+It is positive- the higher median income of a tract in respect to the county, the larger the proportion of white residents 
+
+Now see if you can add a linear line of best fit to these data using geom_smooth (you'll need to set `method = lm` to get a fitted linear model):
+
+```{r}
+# Your Code Here
+ggplot()+
+  geom_point(data=chi, aes(x=PWhite, y=inc_ratio)) +
+  geom_smooth(data=chi, method= lm, aes(x=PWhite, y=inc_ratio)) +
+  labs(title = "My Cool Plot", x = "Percent White", y = "Income Ratio")
+```
+What's the relationship between the percent white population and the income ratio?
+Positive, as one rises, so does the other.
+
+What would it look like to split this out by counties using facets?
+```{r}
+# Your Code Here
+ggplot()+
+  geom_point(data=chi, aes(x=PWhite, y=inc_ratio)) +
+  geom_smooth(data=chi, method= lm, aes(x=PWhite, y=inc_ratio)) +
+  labs(title = "My Cool Plot", x = "Percent White", y = "Income Ratio")+
+  facet_wrap(~COUNTYFP)
+```
+Congratulations, you have learned some ways to calculate common measures of segregation, and have applied these measures as part of a data pipeline.
+
+By changing your download calls at the very beginning of this lab where you download acs data, you could easily create segregation measures for other places. See what you need to do to modify the code to run for another metropolitan area or county.
+
+# Extending this Lab
+Now that you have some new tools that you are familiar with, start exploring these data more. Make maps for other racial groups. Explore dimensions of segregation for other groups.
+
+1. Can you produce the data which would populate a summary table of minority-majority dissimilarity? Which groups face the highest levels of segregation?
+
+2. How does income relate to levels of segregation? Think about how you might use the median household income statistic to explore the relationship.
+
+3. What are other forms of segregation that might be useful to explore (aside from racial and income segregation)?
